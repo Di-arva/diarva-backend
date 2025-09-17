@@ -1,0 +1,28 @@
+{
+  "name": "diarva-backend",
+  "version": "1.0.0",
+  "description": "This is backend for diarva system",
+  "keywords": [
+    "healthcare"
+  ],
+  "homepage": "https://github.com/Di-arva/diarva-backend#readme",
+  "bugs": {
+    "url": "https://github.com/Di-arva/diarva-backend/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Di-arva/diarva-backend.git"
+  },
+  "license": "ISC",
+  "author": "Kunal Shekte",
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "nodemon": "^3.1.10"
+  }
+}
