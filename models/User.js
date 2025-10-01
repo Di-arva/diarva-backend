@@ -41,7 +41,7 @@ const userSchema = new mongoose.Schema(
     },
     profile_picture: {
       url: String,
-      public_id: String, // for Cloudinary or S3
+      public_id: String,
     },
     is_active: { type: Boolean, default: true },
     is_verified: { type: Boolean, default: false },

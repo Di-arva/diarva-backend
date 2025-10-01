@@ -70,7 +70,7 @@ const assistantProfileSchema = new mongoose.Schema(
 
     availability: [
       {
-        day_of_week: { type: Number, min: 0, max: 6, required: true }, // 0=Sunday
+        day_of_week: { type: Number, min: 0, max: 6, required: true },
         is_available: { type: Boolean, default: true },
         time_slots: [
           {

@@ -35,7 +35,7 @@ const workHistorySchema = new mongoose.Schema(
       total_amount: { type: Number, required: true },
       currency: { type: String, default: "CAD" },
       payment_method: { type: String },
-      payment_reference: { type: String }, // e.g., transaction ID
+      payment_reference: { type: String },
       taxes: {
         gst_hst: Number,
         pst: Number,
@@ -47,7 +47,7 @@ const workHistorySchema = new mongoose.Schema(
       assistant_confirmed: {
         status: { type: Boolean, default: false },
         confirmed_at: Date,
-        signature: String, // could store digital signature / code
+        signature: String,
       },
       clinic_confirmed: {
         status: { type: Boolean, default: false },

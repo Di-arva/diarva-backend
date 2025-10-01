@@ -50,7 +50,6 @@ const applicationSchema = new mongoose.Schema(
 
     response_deadline: Date,
 
-    // Auto-matching system (score-based)
     auto_match_score: { type: Number, min: 0, max: 100 },
     match_criteria: {
       location_score: Number,
