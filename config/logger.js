@@ -11,7 +11,7 @@ const logFormat = format.combine(
 const logger = createLogger({
   level: "info",
   format: logFormat,
-  defaultMeta: { service: "dental-clinic-service" },
+  defaultMeta: { service: "diarva-staffing" },
   transports: [
     new transports.Console({
       format: format.combine(
