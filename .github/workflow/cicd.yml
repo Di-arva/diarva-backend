@@ -1,0 +1,27 @@
+name: Deploy Backend
+on: 
+  push:
+    branches: 
+    - main
+
+jobs: 
+  build:
+    runs-on: ubuntu-latest
+    steps: 
+    -name: Checkout Source
+    uses: action/checkout@v4
+    -name: Login to docker hub
+    run: docker login -u ${{}} -p {{}}
+    -name: Build Docker Image
+    run: docker build -t diarvatech/diarva-frontend .
+    -name: Publish Image to docker hub
+    run: docker push diarvatech/diarva-frontend:latest
+  
+  deploy:
+    needs: build
+    runs-on: self-hosted 
+    steps: 
+      -name: Pull image from docker hub
+      run : docker pull diarvatech/diarva-frontend:latest
+      -name: Run Docker Container
+      run: docker run -d -p 1080:1080 --name backend -e db_Password='${{}}' diarvatech/diarva-frontend
