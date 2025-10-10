@@ -51,6 +51,15 @@ const userSchema = new mongoose.Schema(
     last_login: Date,
     login_attempts: { type: Number, default: 0 },
     locked_until: Date,
+    refresh_tokens: [
+      {
+        token_hash: String,
+        created_at: { type: Date, default: Date.now },
+        ip: String,
+        user_agent: String,
+      },
+    ],
+
     preferences: {
       language: { type: String, enum: ["en", "fr"], default: "en" },
       timezone: { type: String, default: "America/Toronto" },
@@ -64,6 +73,16 @@ const userSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+userSchema.methods.isPasswordMatch = async function (plainPassword) {
+  return bcrypt.compare(plainPassword, this.password_hash);
+};
+
+userSchema.methods.setPassword = async function (plainPassword) {
+  const saltRounds = 12;
+  const hash = await bcrypt.hash(plainPassword, saltRounds);
+  this.password_hash = hash;
+};
 
 userSchema.index({ role: 1, is_active: 1 });
 userSchema.index({ city: 1, province: 1 });
