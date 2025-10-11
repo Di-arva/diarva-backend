@@ -1,15 +1,15 @@
 const express = require("express");
 const router = express.Router();
-const authController = require("../controllers/authController");
+const {register, login,refresh, logout, requestPasswordReset, resetPassword} = require("../controllers/authController");
 const { rateLimiterForAuth } = require("../middlewares/rateLimiter");
 const { requireAuth } = require("../middlewares/auth");
 
-router.post("/register", authController.register);
-router.post("/login", rateLimiterForAuth, authController.login);
-router.post("/refresh", authController.refresh);
-router.post("/logout", requireAuth, authController.logout);
+router.post("/register", register);
+router.post("/login", rateLimiterForAuth, login);
+router.post("/refresh", refresh);
+router.post("/logout", requireAuth, logout);
 
-router.post("/request-password-reset", authController.requestPasswordReset);
-router.post("/reset-password", authController.resetPassword);
+router.post("/request-password-reset", requestPasswordReset);
+router.post("/reset-password", resetPassword);
 
 module.exports = router;

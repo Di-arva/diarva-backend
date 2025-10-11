@@ -1,15 +1,33 @@
 const authService = require("../services/authService");
 const logger = require("../config/logger");
-const { sendVerificationEmail, sendPasswordResetEmail } = require("../utils/email");
+const { sendPasswordResetEmail } = require("../utils/email");
 
 const register = async (req, res, next) => {
+  logger.info(`authController register: ${req.body.email}`)
   try {
-    const { password, ...rest } = req.body;
-    if (!password) return res.status(400).json({ success: false, message: "Password required" });
-    const { user, verificationToken } = await authService.register({ ...rest, password });
-    sendVerificationEmail(user.email, verificationToken).catch((err) => logger.error(err));
-    res.status(201).json({ success: true, data: { id: user._id, email: user.email } });
+    const result = await authService.register({
+      email: req.body.email,
+      mobile: req.body.mobile,
+      first_name: req.body.first_name,
+      last_name: req.body.last_name,
+      city: req.body.city,
+      zipcode: req.body.zipcode,
+      province: req.body.province,
+      role: "assistant",
+
+      certification: req.body.certification,
+      harpCertified: !!req.body.harpCertified,
+      specializations: req.body.specializations || [],
+      emergency_contact: req.body.emergency_contact || {},
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Registration submitted. Pending admin approval.",
+      data: result,
+    });
   } catch (err) {
+    logger.error(err)
     next(err);
   }
 };

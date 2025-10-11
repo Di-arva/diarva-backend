@@ -17,7 +17,6 @@ const userSchema = new mongoose.Schema(
     },
     password_hash: {
       type: String,
-      required: true,
       minlength: 60,
     },
     first_name: { type: String, required: true, trim: true, maxlength: 50 },
@@ -59,7 +58,14 @@ const userSchema = new mongoose.Schema(
         user_agent: String,
       },
     ],
-
+    approval_status: {
+      type: String,
+      enum: ["pending", "approved", "rejected"],
+      default: "pending",
+      index: true,
+    },
+    approved_at: Date,
+    approved_by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     preferences: {
       language: { type: String, enum: ["en", "fr"], default: "en" },
       timezone: { type: String, default: "America/Toronto" },

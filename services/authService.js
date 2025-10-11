@@ -1,11 +1,13 @@
 const crypto = require("crypto");
-const bcrypt = require("bcrypt");
 const User = require("../models/User");
 const {
   createAccessToken,
   createRefreshToken,
   verifyRefreshToken,
 } = require("../utils/jwt");
+const mongoose = require("mongoose");
+const AssistantProfile = require("../models/AssistantProfile");
+const logger = require("../config/logger");
 
 const REFRESH_TOKEN_HASH_ALGO = "sha256";
 
@@ -13,27 +15,76 @@ function hashToken(token) {
   return crypto.createHash(REFRESH_TOKEN_HASH_ALGO).update(token).digest("hex");
 }
 
-const register = async (userData) => {
-  const { email, mobile, password, first_name, last_name, city, zipcode, province, role } = userData;
-  const existing = await User.findOne({ $or: [{ email }, { mobile }] });
-  if (existing) {
+const register = async (payload) => {
+  const {
+    email, mobile, first_name, last_name, city, zipcode, province,
+    role,
+    certification,
+    specializations = [],
+    emergency_contact = {},
+  } = payload;
+
+  const exists = await User.findOne({ $or: [{ email }, { mobile }] });
+  if (exists) {
+    logger.error("Email or mobile already registered")
     throw new Error("Email or mobile already registered");
   }
-  const user = new User({
-    email,
-    mobile,
-    first_name,
-    last_name,
-    city,
-    zipcode,
-    province,
-    role,
-  });
-  await user.setPassword(password);
-  const verificationToken = crypto.randomBytes(32).toString("hex");
-  user.verification_token = verificationToken;
-  await user.save();
-  return { user, verificationToken };
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const user = new User({
+      email,
+      mobile,
+      first_name,
+      last_name,
+      city,
+      zipcode,
+      province,
+      role,
+      is_active: false,
+      approval_status: "pending",
+      is_verified: false,
+      verification_token: crypto.randomBytes(32).toString("hex"),
+    });
+
+    await user.save({ session });
+
+    const certLevel = certification;
+    const specSet = new Set(specializations);
+    if (harpCertified) specSet.add("Dental Radiography");
+
+    const assistantProfile = new AssistantProfile({
+      user_id: user._id,
+      professional_info: {
+        certification_level: certLevel,
+        experience_years: 0,
+        specializations: Array.from(specSet),
+      },
+      emergency_contact: {
+        name: emergency_contact.name,
+        relationship: emergency_contact.relationship,
+        phone: emergency_contact.phone,
+        email: emergency_contact.email,
+      },
+    });
+
+    await assistantProfile.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return {
+      userId: user._id,
+      email: user.email,
+      approval_status: user.approval_status,
+    };
+  } catch (err) {
+    await session.abortTransaction();
+    session.endSession();
+    logger.error(err)
+    throw err;
+  }
 };
 
 const login = async ({ emailOrMobile, password, ip, userAgent }) => {
