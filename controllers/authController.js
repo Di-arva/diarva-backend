@@ -16,7 +16,6 @@ const register = async (req, res, next) => {
       role: "assistant",
 
       certification: req.body.certification,
-      harpCertified: !!req.body.harpCertified,
       specializations: req.body.specializations || [],
       emergency_contact: req.body.emergency_contact || {},
     });

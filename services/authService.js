@@ -52,7 +52,6 @@ const register = async (payload) => {
 
     const certLevel = certification;
     const specSet = new Set(specializations);
-    if (harpCertified) specSet.add("Dental Radiography");
 
     const assistantProfile = new AssistantProfile({
       user_id: user._id,
