@@ -12,7 +12,6 @@ const assistantProfileSchema = new mongoose.Schema(
     professional_info: {
       certification_level: {
         type: String,
-        enum: ["Level_I", "Level_II", "RDA", "CDA", "PDA", "Provisional"],
         required: true,
       },
       provincial_licenses: [
@@ -37,7 +36,7 @@ const assistantProfileSchema = new mongoose.Schema(
       specializations: [
         {
           type: String,
-          enum: [
+          enum: [ 
             "Chairside Assisting",
             "Dental Radiography",
             "Infection Control",
@@ -47,6 +46,7 @@ const assistantProfileSchema = new mongoose.Schema(
             "Pediatric Assisting",
             "Laboratory Procedures",
             "Administrative Tasks",
+            "Hygenist"
           ],
         },
       ],
