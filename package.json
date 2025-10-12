@@ -23,6 +23,8 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
+    "@aws-sdk/client-ses": "^3.908.0",
+    "@aws-sdk/client-sns": "^3.908.0",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",

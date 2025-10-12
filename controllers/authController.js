@@ -3,7 +3,7 @@ const logger = require("../config/logger");
 const { sendPasswordResetEmail } = require("../utils/email");
 
 const register = async (req, res, next) => {
-  logger.info(`authController register: ${req.body.email}`)
+  logger.info(`authController register: ${req.body.email}`);
   try {
     const result = await authService.register({
       email: req.body.email,
@@ -18,6 +18,9 @@ const register = async (req, res, next) => {
       certification: req.body.certification,
       specializations: req.body.specializations || [],
       emergency_contact: req.body.emergency_contact || {},
+
+      email_verification_token: req.body.email_verification_token,
+      phone_verification_token: req.body.phone_verification_token,
     });
 
     return res.status(201).json({
@@ -26,7 +29,7 @@ const register = async (req, res, next) => {
       data: result,
     });
   } catch (err) {
-    logger.error(err)
+    logger.error(err);
     next(err);
   }
 };
@@ -50,7 +53,10 @@ const login = async (req, res, next) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    res.json({ success: true, data: { accessToken, user: { id: user._id, email: user.email, role: user.role } } });
+    res.json({
+      success: true,
+      data: { accessToken, user: { id: user._id, email: user.email, role: user.role } },
+    });
   } catch (err) {
     next(err);
   }
@@ -108,6 +114,39 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
+/** =======================
+ *  Pre-registration OTP
+ *  ======================= */
+const sendOtp = async (req, res, next) => {
+  try {
+    const { channel, identifier } = req.body;
+    await authService.sendOtp({ channel, identifier });
+    res.json({ success: true, message: "OTP sent." });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const verifyOtp = async (req, res, next) => {
+  try {
+    const { channel, identifier, code } = req.body;
+    const result = await authService.verifyOtp({ channel, identifier, code });
+    res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const resendOtp = async (req, res, next) => {
+  try {
+    const { channel, identifier } = req.body;
+    const result = await authService.resendOtp({ channel, identifier });
+    res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -115,4 +154,7 @@ module.exports = {
   logout,
   requestPasswordReset,
   resetPassword,
+  sendOtp,
+  verifyOtp,
+  resendOtp,
 };
