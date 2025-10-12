@@ -44,6 +44,17 @@ const userSchema = new mongoose.Schema(
     },
     is_active: { type: Boolean, default: true },
     is_verified: { type: Boolean, default: false },
+    email_verified_at: Date,
+    phone_verified_at: Date,
+
+    email_otp_hash: String,
+    email_otp_expires: Date,
+
+    phone_otp_hash: String,
+    phone_otp_expires: Date,
+
+    otp_attempts: { type: Number, default: 0 },
+    otp_last_sent_at: Date,
     verification_token: String,
     password_reset_token: String,
     password_reset_expires: Date,
