@@ -133,6 +133,18 @@ const verifyOtp = async (req, res, next) => {
     const result = await authService.verifyOtp({ channel, identifier, code });
     res.json({ success: true, data: result });
   } catch (err) {
+    // handle known OTP errors
+    const otpErrors = [
+      "No OTP found. Please request a new code.",
+      "OTP expired. Please request a new code.",
+      "Too many attempts. Please request a new OTP.",
+      "Incorrect OTP."
+    ];
+
+    if (otpErrors.includes(err.message)) {
+      return res.status(400).json({ success: false, message: err.message });
+    }
+
     next(err);
   }
 };
