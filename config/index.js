@@ -5,6 +5,7 @@ const cookieParser = require("cookie-parser");
 const { errorHandler } = require("../middlewares/errorHandler");
 const logger = require("../config/logger");
 const authRoutes = require("../routes/authRoutes");
+const adminRoutes = require("../routes/adminRoutes")
 
 const app = express();
 
@@ -19,5 +20,6 @@ app.use(errorHandler);
 
 //routes
 app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/admin", adminRoutes);
 
 module.exports = app;

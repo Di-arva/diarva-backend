@@ -1,5 +1,6 @@
 const { SESClient } = require("@aws-sdk/client-ses");
 const { SNSClient } = require("@aws-sdk/client-sns");
+const { S3Client} = require("@aws-sdk/client-s3")
 
 const awsConfiguration = {
   region: process.env.AWS_REGION,
@@ -11,5 +12,6 @@ const awsConfiguration = {
 
 const ses = new SESClient(awsConfiguration);
 const sns = new SNSClient(awsConfiguration);
+const s3 = new S3Client(awsConfiguration);
 
-module.exports = { ses, sns };
+module.exports = { ses, sns, s3 };

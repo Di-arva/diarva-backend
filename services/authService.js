@@ -53,6 +53,7 @@ const register = async (payload) => {
     certification,
     specializations = [],
     emergency_contact = {},
+    certificates = [],
     email_verification_token,
     phone_verification_token,
   } = payload;
@@ -99,6 +100,7 @@ const register = async (payload) => {
         certification_level: certLevel,
         experience_years: 0,
         specializations: Array.isArray(specializations) ? specializations : [],
+        certificates: certificates || []
       },
       emergency_contact: {
         name: emergency_contact.name,
@@ -283,10 +285,97 @@ const verifyOtp = async ({ channel, identifier, code }) => {
     throw new Error("Incorrect OTP.");
   }
 
-  // success → consume OTP and return short-lived token
   delOtp(channel, identifier);
   const token = signVerificationToken({ channel, identifier });
   return { verified: true, token };
+};
+
+function hashToken(token) {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+const SET_PW_TTL_MIN = parseInt(process.env.SET_PASSWORD_TOKEN_TTL_MINUTES || "60", 10);
+const CLIENT_APP_BASE_URL = process.env.CLIENT_APP_BASE_URL || "http://localhost:5173";
+
+async function sendSetPasswordEmailRaw(to, link) {
+  const subject = "Set your Diarva password";
+  const html = `
+    <p>Hi,</p>
+    <p>Your account has been approved. Please set your password by clicking the link below:</p>
+    <p><a href="${link}">Set Password</a></p>
+    <p>This link expires in ${SET_PW_TTL_MIN} minutes.</p>
+  `;
+  const code = `Use the link: ${link}`; 
+
+  await sendEmailOtp(to, code);
+}
+
+const approveUserAndSendSetPassword = async (userId, adminId) => {
+  const user = await User.findById(userId);
+  if (!user) throw new Error("User not found");
+  if (!user.is_verified) throw new Error("User is not verified.");
+  if (user.approval_status === "approved") {
+    if (!user.password_hash) {
+      await sendSetPasswordEmail(user._id, adminId);
+    }
+    return;
+  }
+
+  user.approval_status = "approved";
+  user.is_active = true;
+  user.approved_at = new Date();
+  user.approved_by = adminId || undefined;
+  await user.save();
+
+  await sendSetPasswordEmail(user._id, adminId);
+};
+
+const rejectUser = async (userId, adminId) => {
+  const user = await User.findById(userId);
+  if (!user) throw new Error("User not found");
+  user.approval_status = "rejected";
+  user.is_active = false;
+  user.approved_at = undefined;
+  user.approved_by = adminId || undefined;
+  await user.save();
+  return;
+};
+
+const sendSetPasswordEmail = async (userId, adminId) => {
+  const user = await User.findById(userId);
+  if (!user) throw new Error("User not found");
+  if (user.approval_status !== "approved" || user.is_active !== true) {
+    throw new Error("User must be approved and active to set password.");
+  }
+
+  const raw = crypto.randomBytes(32).toString("hex");
+  const tokenHash = hashToken(raw);
+  user.set_password_token = tokenHash;
+  user.set_password_expires = new Date(Date.now() + SET_PW_TTL_MIN * 60 * 1000);
+  await user.save();
+
+  const link = `${CLIENT_APP_BASE_URL}/set-password?token=${raw}`;
+  await sendSetPasswordEmailRaw(user.email, link);
+  logger.info(`Set password email sent to ${user.email}`);
+};
+
+const setPasswordWithToken = async (token, newPassword) => {
+  if (!token || !newPassword) throw new Error("Token and newPassword are required");
+  const tokenHash = hashToken(token);
+
+  const user = await User.findOne({
+    set_password_token: tokenHash,
+    set_password_expires: { $gt: new Date() },
+  });
+  if (!user) throw new Error("Invalid or expired set-password token");
+
+  await user.setPassword(newPassword);
+
+  user.set_password_token = undefined;
+  user.set_password_expires = undefined;
+
+  await user.save();
+  return { ok: true };
 };
 
 module.exports = {
@@ -299,4 +388,8 @@ module.exports = {
   sendOtp,
   verifyOtp,
   resendOtp,
+  approveUserAndSendSetPassword,
+  rejectUser,
+  sendSetPasswordEmail,
+  setPasswordWithToken,
 };
