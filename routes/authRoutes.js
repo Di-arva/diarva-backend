@@ -1,19 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const {
-  register,
-  login,
-  refresh,
-  logout,
-  requestPasswordReset,
-
-  resetPassword,
-  sendOtp,
-  verifyOtp,
-  resendOtp,
-  sendSetPassword,
-  setPassword,
-  uploadCertificate,
+  register, login, refresh, logout, requestPasswordReset, resetPassword,
+  verifyOtp, resendOtp,
+  sendSetPassword, setPassword, uploadCertificate
 } = require("../controllers/authController");
 const { rateLimiterForAuth } = require("../middlewares/rateLimiter");
 const { requireAuth } = require("../middlewares/auth");
@@ -28,13 +18,8 @@ router.post("/request-password-reset", requestPasswordReset);
 router.post("/reset-password", resetPassword);
 router.post("/verify-otp", rateLimiterForAuth, verifyOtp);
 router.post("/resend-otp", rateLimiterForAuth, resendOtp);
-router.post("/otp/send", rateLimiterForAuth, sendOtp);
-router.post(
-  "/send-set-password",
-  requireAuth,
-  requireRole("admin"),
-  sendSetPassword
-);
+
+router.post("/send-set-password", requireAuth, requireRole("admin"), sendSetPassword);
 router.post("/set-password", rateLimiterForAuth, setPassword);
 
 router.post("/certificate", upload.single("file"), uploadCertificate);
