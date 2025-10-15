@@ -1,7 +1,7 @@
 const authService = require("../services/authService");
 const logger = require("../config/logger");
 const { sendPasswordResetEmail } = require("../utils/email");
-const { uploadCertificateToS3 } = require("../services/commService")
+const { uploadCertificateToS3 } = require("../services/commService");
 
 const register = async (req, res, next) => {
   logger.info(`authController register: ${req.body.email}`);
@@ -30,6 +30,8 @@ const register = async (req, res, next) => {
       data: result,
     });
   } catch (err) {
+    // handle known register errors
+
     logger.error(err);
     next(err);
   }
@@ -56,7 +58,10 @@ const login = async (req, res, next) => {
 
     res.json({
       success: true,
-      data: { accessToken, user: { id: user._id, email: user.email, role: user.role } },
+      data: {
+        accessToken,
+        user: { id: user._id, email: user.email, role: user.role },
+      },
     });
   } catch (err) {
     next(err);
@@ -66,8 +71,15 @@ const login = async (req, res, next) => {
 const refresh = async (req, res, next) => {
   try {
     const { refreshToken } = req.cookies || {};
-    if (!refreshToken) return res.status(401).json({ success: false, message: "No refresh token" });
-    const { accessToken, refreshToken: newRefresh, user } = await authService.refreshTokens(refreshToken);
+    if (!refreshToken)
+      return res
+        .status(401)
+        .json({ success: false, message: "No refresh token" });
+    const {
+      accessToken,
+      refreshToken: newRefresh,
+      user,
+    } = await authService.refreshTokens(refreshToken);
 
     res.cookie("refreshToken", newRefresh, {
       httpOnly: true,
@@ -76,7 +88,10 @@ const refresh = async (req, res, next) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    res.json({ success: true, data: { accessToken, user: { id: user._id, role: user.role } } });
+    res.json({
+      success: true,
+      data: { accessToken, user: { id: user._id, role: user.role } },
+    });
   } catch (err) {
     next(err);
   }
@@ -139,7 +154,7 @@ const verifyOtp = async (req, res, next) => {
       "No OTP found. Please request a new code.",
       "OTP expired. Please request a new code.",
       "Too many attempts. Please request a new OTP.",
-      "Incorrect OTP."
+      "Incorrect OTP.",
     ];
 
     if (otpErrors.includes(err.message)) {
@@ -176,7 +191,10 @@ const setPassword = async (req, res, next) => {
   try {
     const { token, newPassword } = req.body;
     await authService.setPasswordWithToken(token, newPassword);
-    res.json({ success: true, message: "Password set successfully. You can now log in." });
+    res.json({
+      success: true,
+      message: "Password set successfully. You can now log in.",
+    });
   } catch (err) {
     logger.error(err);
     next(err);
@@ -186,7 +204,9 @@ const setPassword = async (req, res, next) => {
 const uploadCertificate = async (req, res, next) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ success: false, message: "No file uploaded" });
+      return res
+        .status(400)
+        .json({ success: false, message: "No file uploaded" });
     }
 
     const url = await uploadCertificateToS3(
@@ -216,5 +236,5 @@ module.exports = {
   resendOtp,
   sendSetPassword,
   setPassword,
-  uploadCertificate
+  uploadCertificate,
 };

@@ -4,17 +4,28 @@ const mongoose = require("mongoose");
 const User = require("../models/User");
 const AssistantProfile = require("../models/AssistantProfile");
 const logger = require("../config/logger");
+const apiError = require("../middlewares/apiError");
+
 const {
   createAccessToken,
   createRefreshToken,
   verifyRefreshToken,
 } = require("../utils/jwt");
-const { generateNumericOtp, hashOtp, getExpiryDate, canResend } = require("../config/otp");
+const {
+  generateNumericOtp,
+  hashOtp,
+  getExpiryDate,
+  canResend,
+} = require("../config/otp");
 const { sendEmailOtp, sendSmsOtp } = require("../services/commService");
 
 const REFRESH_TOKEN_HASH_ALGO = "sha256";
-const OTP_VERIFY_SECRET = process.env.OTP_VERIFICATION_JWT_SECRET || "change_me";
-const OTP_VERIFY_TTL_MIN = parseInt(process.env.OTP_VERIFICATION_TTL_MINUTES || "15", 10);
+const OTP_VERIFY_SECRET =
+  process.env.OTP_VERIFICATION_JWT_SECRET || "change_me";
+const OTP_VERIFY_TTL_MIN = parseInt(
+  process.env.OTP_VERIFICATION_TTL_MINUTES || "15",
+  10
+);
 const OTP_MAX_ATTEMPTS = parseInt(process.env.OTP_MAX_ATTEMPTS || "5", 10);
 
 const otpStore = new Map();
@@ -32,7 +43,9 @@ function delOtp(channel, identifier) {
 
 function signVerificationToken({ channel, identifier }) {
   const payload = { ch: channel, idf: identifier };
-  return jwt.sign(payload, OTP_VERIFY_SECRET, { expiresIn: `${OTP_VERIFY_TTL_MIN}m` });
+  return jwt.sign(payload, OTP_VERIFY_SECRET, {
+    expiresIn: `${OTP_VERIFY_TTL_MIN}m`,
+  });
 }
 function verifyVerificationToken(token, expected) {
   const decoded = jwt.verify(token, OTP_VERIFY_SECRET);
@@ -48,7 +61,13 @@ function hashToken(token) {
 
 const register = async (payload) => {
   const {
-    email, mobile, first_name, last_name, city, zipcode, province,
+    email,
+    mobile,
+    first_name,
+    last_name,
+    city,
+    zipcode,
+    province,
     role,
     certification,
     specializations = [],
@@ -59,16 +78,27 @@ const register = async (payload) => {
   } = payload;
 
   if (!email_verification_token || !phone_verification_token) {
-    throw new Error("Verification tokens are required. Please verify email and phone first.");
+    throw new Error(
+      "Verification tokens are required. Please verify email and phone first."
+    );
   }
 
-  verifyVerificationToken(email_verification_token, { channel: "email", identifier: email });
-  verifyVerificationToken(phone_verification_token, { channel: "phone", identifier: mobile });
+  verifyVerificationToken(email_verification_token, {
+    channel: "email",
+    identifier: email,
+  });
+  verifyVerificationToken(phone_verification_token, {
+    channel: "phone",
+    identifier: mobile,
+  });
 
   const exists = await User.findOne({ $or: [{ email }, { mobile }] });
   if (exists) {
     logger.error("Email or mobile already registered");
-    throw new Error("Email or mobile already registered");
+    throw new apiError(
+      409,
+      "This email or phone is already registered. Please login."
+    );
   }
 
   const session = await mongoose.startSession();
@@ -100,7 +130,7 @@ const register = async (payload) => {
         certification_level: certLevel,
         experience_years: 0,
         specializations: Array.isArray(specializations) ? specializations : [],
-        certificates: certificates || []
+        certificates: certificates || [],
       },
       emergency_contact: {
         name: emergency_contact.name,
@@ -183,19 +213,29 @@ const refreshTokens = async (presentedToken) => {
   if (!user) throw new Error("Invalid refresh token");
 
   const presentedHash = hashToken(presentedToken);
-  const found = (user.refresh_tokens || []).find((t) => t.token_hash === presentedHash);
+  const found = (user.refresh_tokens || []).find(
+    (t) => t.token_hash === presentedHash
+  );
   if (!found) {
     user.refresh_tokens = [];
     await user.save();
     throw new Error("Refresh token is invalid or revoked");
   }
 
-  user.refresh_tokens = user.refresh_tokens.filter((t) => t.token_hash !== presentedHash);
-  const newRefresh = createRefreshToken({ sub: user._id.toString(), role: user.role });
+  user.refresh_tokens = user.refresh_tokens.filter(
+    (t) => t.token_hash !== presentedHash
+  );
+  const newRefresh = createRefreshToken({
+    sub: user._id.toString(),
+    role: user.role,
+  });
   user.refresh_tokens.push({ token_hash: hashToken(newRefresh) });
   await user.save();
 
-  const newAccess = createAccessToken({ sub: user._id.toString(), role: user.role });
+  const newAccess = createAccessToken({
+    sub: user._id.toString(),
+    role: user.role,
+  });
   return { accessToken: newAccess, refreshToken: newRefresh, user };
 };
 
@@ -206,7 +246,9 @@ const logout = async (userId, presentedRefreshToken) => {
     user.refresh_tokens = [];
   } else {
     const presentedHash = hashToken(presentedRefreshToken);
-    user.refresh_tokens = (user.refresh_tokens || []).filter((t) => t.token_hash !== presentedHash);
+    user.refresh_tokens = (user.refresh_tokens || []).filter(
+      (t) => t.token_hash !== presentedHash
+    );
   }
   await user.save();
   return;
@@ -237,7 +279,8 @@ const resetPassword = async (token, newPassword) => {
 };
 
 const sendOtp = async ({ channel, identifier }) => {
-  if (!channel || !identifier) throw new Error("channel and identifier are required");
+  if (!channel || !identifier)
+    throw new Error("channel and identifier are required");
   const cached = getOtp(channel, identifier);
   if (cached && !canResend(cached.lastSent)) {
     throw new Error("Please wait before requesting another OTP.");
@@ -294,8 +337,12 @@ function hashToken(token) {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 
-const SET_PW_TTL_MIN = parseInt(process.env.SET_PASSWORD_TOKEN_TTL_MINUTES || "60", 10);
-const CLIENT_APP_BASE_URL = process.env.CLIENT_APP_BASE_URL || "http://localhost:5173";
+const SET_PW_TTL_MIN = parseInt(
+  process.env.SET_PASSWORD_TOKEN_TTL_MINUTES || "60",
+  10
+);
+const CLIENT_APP_BASE_URL =
+  process.env.CLIENT_APP_BASE_URL || "http://localhost:5173";
 
 async function sendSetPasswordEmailRaw(to, link) {
   const subject = "Set your Diarva password";
@@ -305,7 +352,7 @@ async function sendSetPasswordEmailRaw(to, link) {
     <p><a href="${link}">Set Password</a></p>
     <p>This link expires in ${SET_PW_TTL_MIN} minutes.</p>
   `;
-  const code = `Use the link: ${link}`; 
+  const code = `Use the link: ${link}`;
 
   await sendEmailOtp(to, code);
 }
@@ -360,7 +407,8 @@ const sendSetPasswordEmail = async (userId, adminId) => {
 };
 
 const setPasswordWithToken = async (token, newPassword) => {
-  if (!token || !newPassword) throw new Error("Token and newPassword are required");
+  if (!token || !newPassword)
+    throw new Error("Token and newPassword are required");
   const tokenHash = hashToken(token);
 
   const user = await User.findOne({
