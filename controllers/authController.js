@@ -1,6 +1,7 @@
 const authService = require("../services/authService");
 const logger = require("../config/logger");
 const { sendPasswordResetEmail } = require("../utils/email");
+const { uploadCertificateToS3 } = require("../services/commService")
 
 const register = async (req, res, next) => {
   logger.info(`authController register: ${req.body.email}`);
@@ -159,6 +160,50 @@ const resendOtp = async (req, res, next) => {
   }
 };
 
+const sendSetPassword = async (req, res, next) => {
+  try {
+    const { userId } = req.body;
+    const adminId = req.user?.sub;
+    await authService.sendSetPasswordEmail(userId, adminId);
+    res.json({ success: true, message: "Set-password email sent." });
+  } catch (err) {
+    logger.error(err);
+    next(err);
+  }
+};
+
+const setPassword = async (req, res, next) => {
+  try {
+    const { token, newPassword } = req.body;
+    await authService.setPasswordWithToken(token, newPassword);
+    res.json({ success: true, message: "Password set successfully. You can now log in." });
+  } catch (err) {
+    logger.error(err);
+    next(err);
+  }
+};
+
+const uploadCertificate = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: "No file uploaded" });
+    }
+
+    const url = await uploadCertificateToS3(
+      req.file.buffer,
+      req.file.originalname,
+      req.file.mimetype
+    );
+
+    return res.status(200).json({
+      success: true,
+      url,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -169,4 +214,7 @@ module.exports = {
   sendOtp,
   verifyOtp,
   resendOtp,
+  sendSetPassword,
+  setPassword,
+  uploadCertificate
 };

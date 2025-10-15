@@ -10,6 +10,7 @@ const assistantProfileSchema = new mongoose.Schema(
     },
 
     professional_info: {
+      certificates: { type: [String], default: [] },
       certification_level: {
         type: String,
         required: true,
