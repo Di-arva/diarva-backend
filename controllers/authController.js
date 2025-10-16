@@ -14,7 +14,7 @@ const register = async (req, res, next) => {
       city: req.body.city,
       zipcode: req.body.zipcode,
       province: req.body.province,
-      role: "assistant",
+      role: req.body.role,
 
       certification: req.body.certification,
       specializations: req.body.specializations || [],

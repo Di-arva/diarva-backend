@@ -77,20 +77,14 @@ const register = async (payload) => {
     phone_verification_token,
   } = payload;
 
-  if (!email_verification_token || !phone_verification_token) {
-    throw new Error(
-      "Verification tokens are required. Please verify email and phone first."
-    );
-  }
+  if(role === "assistant"){
+    if (!email_verification_token || !phone_verification_token) {
+      throw new Error("Verification tokens are required. Please verify email and phone first.");
+    }
 
-  verifyVerificationToken(email_verification_token, {
-    channel: "email",
-    identifier: email,
-  });
-  verifyVerificationToken(phone_verification_token, {
-    channel: "phone",
-    identifier: mobile,
-  });
+    verifyVerificationToken(email_verification_token, { channel: "email", identifier: email });
+    verifyVerificationToken(phone_verification_token, { channel: "phone", identifier: mobile });
+  }
 
   const exists = await User.findOne({ $or: [{ email }, { mobile }] });
   if (exists) {
