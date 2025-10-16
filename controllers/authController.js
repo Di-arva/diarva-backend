@@ -4,24 +4,27 @@ const { sendPasswordResetEmail } = require("../utils/email");
 const { uploadCertificateToS3 } = require("../services/commService");
 
 const register = async (req, res, next) => {
-  logger.info(`authController register: ${req.body.email}`);
+  logger.info(`authController register: ${req?.body?.email}`);
   try {
     const result = await authService.register({
-      email: req.body.email,
-      mobile: req.body.mobile,
-      first_name: req.body.first_name,
-      last_name: req.body.last_name,
-      city: req.body.city,
-      zipcode: req.body.zipcode,
-      province: req.body.province,
-      role: req.body.role,
+      email: req?.body?.email,
+      mobile: req?.body?.mobile,
+      first_name: req?.body?.first_name,
+      last_name: req?.body?.last_name,
+      clinic_name: req?.body?.clinic_name || "",
 
-      certification: req.body.certification,
-      specializations: req.body.specializations || [],
-      emergency_contact: req.body.emergency_contact || {},
+      address_line: req?.body?.address_line || "",
+      city: req?.body?.city,
+      zipcode: req?.body?.zipcode,
+      province: req?.body?.province,
+      role: req?.body?.role,
 
-      email_verification_token: req.body.email_verification_token,
-      phone_verification_token: req.body.phone_verification_token,
+      certification: req?.body?.certification,
+      specializations: req?.body?.specializations || [],
+      emergency_contact: req?.body?.emergency_contact || {},
+
+      email_verification_token: req?.body?.email_verification_token,
+      phone_verification_token: req?.body?.phone_verification_token,
     });
 
     return res.status(201).json({
@@ -30,8 +33,6 @@ const register = async (req, res, next) => {
       data: result,
     });
   } catch (err) {
-    // handle known register errors
-
     logger.error(err);
     next(err);
   }

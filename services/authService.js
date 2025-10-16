@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 const User = require("../models/User");
 const AssistantProfile = require("../models/AssistantProfile");
+const Clinic = require("../models/Clinic")
 const logger = require("../config/logger");
 const apiError = require("../middlewares/apiError");
 
@@ -65,6 +66,8 @@ const register = async (payload) => {
     mobile,
     first_name,
     last_name,
+    clinic_name,
+    address_line,
     city,
     zipcode,
     province,
@@ -78,13 +81,18 @@ const register = async (payload) => {
   } = payload;
 
   if(role === "assistant"){
-    if (!email_verification_token || !phone_verification_token) {
-      throw new Error("Verification tokens are required. Please verify email and phone first.");
+    if (!phone_verification_token) {
+      throw new Error("Verification tokens are required. Please verify phone first.");
     }
 
-    verifyVerificationToken(email_verification_token, { channel: "email", identifier: email });
     verifyVerificationToken(phone_verification_token, { channel: "phone", identifier: mobile });
   }
+
+  if (!email_verification_token) {
+    throw new Error("Verification tokens are required. Please verify email first.");
+  }
+
+  verifyVerificationToken(email_verification_token, { channel: "email", identifier: email });
 
   const exists = await User.findOne({ $or: [{ email }, { mobile }] });
   if (exists) {
@@ -118,23 +126,43 @@ const register = async (payload) => {
     await user.save({ session });
 
     const certLevel = certification;
-    const assistantProfile = new AssistantProfile({
-      user_id: user._id,
-      professional_info: {
-        certification_level: certLevel,
-        experience_years: 0,
-        specializations: Array.isArray(specializations) ? specializations : [],
-        certificates: certificates || [],
-      },
-      emergency_contact: {
-        name: emergency_contact.name,
-        relationship: emergency_contact.relationship,
-        phone: emergency_contact.phone,
-        email: emergency_contact.email,
-      },
-    });
 
-    await assistantProfile.save({ session });
+    if (role === "assistant") {
+      const assistantProfile = new AssistantProfile({
+        user_id: user._id,
+        professional_info: {
+          certification_level: certLevel,
+          experience_years: 0,
+          specializations: Array.isArray(specializations)
+            ? specializations
+            : [],
+          certificates: certificates || [],
+        },
+        emergency_contact: {
+          name: emergency_contact.name,
+          relationship: emergency_contact.relationship,
+          phone: emergency_contact.phone,
+          email: emergency_contact.email,
+        },
+      });
+
+      await assistantProfile.save({ session });
+    }
+
+    if (role === "clinic") {
+      const clinic = new Clinic({
+        user_id: user._id,
+        clinic_name,
+        address: {
+          address_line,
+          city,
+          province,
+          postal_code: zipcode,
+        },
+      });
+
+      await clinic.save({ session });
+    }
 
     await session.commitTransaction();
     session.endSession();

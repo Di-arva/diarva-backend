@@ -12,8 +12,7 @@ const clinicSchema = new mongoose.Schema(
     business_number: { type: String, unique: true, sparse: true },
 
     address: {
-      street: { type: String, required: true, trim: true },
-      unit: { type: String, trim: true },
+      address_line: { type: String, required: true, trim: true },
       city: { type: String, required: true, trim: true },
       province: {
         type: String,
