@@ -1,6 +1,7 @@
 // controllers/clinicTaskController.js
 const logger = require("../config/logger");
 const taskService = require("../services/taskService");
+const mongoose = require("mongoose");
 
 // Schema enums (mirror model)
 const CERT_ENUM = ["Level_I", "Level_II", "RDA", "CDA", "PDA", "Any"];
@@ -240,4 +241,37 @@ const listForClinic = async (req, res, next) => {
   }
 };
 
-module.exports = { listForClinic, create };
+const getById = async (req, res, next) => {
+  const log = req.log || logger;
+  const user = req.user || {};
+  const { id } = req.params || {};
+  log.info({ msg: "clinicTaskController.getById called", userId: user.sub, role: user.role, id });
+
+  try {
+    if (!mongoose.isValidObjectId(id)) {
+      log.warn({ msg: "Invalid task id", id });
+      return res.status(400).json({ success: false, message: "Invalid task id" });
+    }
+
+    const isAdmin = user.role === "admin";
+    const clinicId = user.clinic_id;
+    if (!isAdmin && !clinicId) {
+      log.warn({ msg: "No clinic scope on user for task fetch", userId: user.sub });
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const task = await taskService.getByIdForClinic(id, { clinicId, isAdmin }, { reqId: req.reqId, actor: user.sub });
+    if (!task) {
+      log.info({ msg: "Task not found or not in clinic scope", id, clinicId, isAdmin });
+      return res.status(404).json({ success: false, message: "Task not found" });
+    }
+
+    log.info({ msg: "clinicTaskController.getById success", taskId: task._id });
+    return res.json({ success: true, data: task });
+  } catch (err) {
+    log.error({ msg: "clinicTaskController.getById error", error: err.message, stack: err.stack });
+    next(err);
+  }
+};
+
+module.exports = { listForClinic, create, getById };

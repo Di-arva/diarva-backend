@@ -121,4 +121,26 @@ async function listForClinic(clinicId, opts, ctx = {}) {
   };
 }
 
-module.exports = { createForClinic, listForClinic };
+async function getByIdForClinic(taskId, scope, ctx = {}) {
+  const log = logger.child({ reqId: ctx.reqId || "n/a", actor: ctx.actor || "n/a", taskId });
+  const { clinicId, isAdmin } = scope || {};
+  log.info({ msg: "taskService.getByIdForClinic called", clinicId, isAdmin });
+
+  const query = { _id: new mongoose.Types.ObjectId(taskId) };
+  if (!isAdmin) {
+    query.clinic_id = new mongoose.Types.ObjectId(clinicId);
+  }
+
+  const t0 = Date.now();
+  const task = await Task.findOne(query).lean(); 
+  log.info({
+    msg: "db.findOne Task",
+    collection: "tasks",
+    duration_ms: Date.now() - t0,
+    found: !!task,
+  });
+
+  return task || null;
+}
+
+module.exports = { createForClinic, listForClinic, getByIdForClinic };
