@@ -6,6 +6,7 @@ const { errorHandler } = require("../middlewares/errorHandler");
 const logger = require("../config/logger");
 const authRoutes = require("../routes/authRoutes");
 const adminRoutes = require("../routes/adminRoutes")
+const clinicRoutes = require("../routes/clinicRoutes")
 
 const app = express();
 
@@ -21,5 +22,6 @@ app.use(errorHandler);
 //routes
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/admin", adminRoutes);
+app.use("/api/v1/clinic", clinicRoutes);
 
 module.exports = app;

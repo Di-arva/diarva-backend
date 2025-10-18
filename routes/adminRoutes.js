@@ -2,8 +2,7 @@
 const express = require("express");
 const router = express.Router();
 
-const { requireAuth } = require("../middlewares/auth");
-const { requireRole } = require("../middlewares/requireRole");
+const { requireAuth, requireRole } = require("../middlewares/auth");
 const adminController = require("../controllers/adminController");
 
 router.post("/users/:id/approve", requireAuth, requireRole("admin"), adminController.approveUser);
