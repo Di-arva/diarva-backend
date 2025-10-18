@@ -168,4 +168,76 @@ const create = async (req, res, next) => {
   }
 };
 
-module.exports = { create };
+const listForClinic = async (req, res, next) => {
+  const log = req.log || logger;
+  const user = req.user || {};
+  log.info({ msg: "clinicTaskController.listForClinic called", userId: user.sub, role: user.role, query: req.query });
+
+  try {
+    const q = req.query || {};
+    const errors = [];
+
+    // clinic scope
+    const clinicId = user.clinic_id || q.clinic_id;
+    if (!clinicId) errors.push("clinic_id missing");
+
+    // filters
+    const filters = {};
+    if (q.status) {
+      const statuses = String(q.status).split(",").map(s=>s.trim()).filter(Boolean);
+      const bad = statuses.filter(s => !STATUS_ENUM.includes(s));
+      if (bad.length) errors.push(`Invalid status: ${bad.join(", ")}`);
+      else filters.status = { $in: statuses };
+    }
+
+    if (q.priority) {
+      if (!PRIORITY_ENUM.includes(q.priority)) errors.push(`Invalid priority: ${q.priority}`);
+      else filters.priority = q.priority;
+    }
+
+    if (q.certification_level) {
+      let cert = q.certification_level;
+      if (CERT_ALIASES[cert]) cert = CERT_ALIASES[cert];
+      if (!CERT_ENUM.includes(cert)) errors.push(`Invalid certification_level: ${q.certification_level}`);
+      else filters["requirements.certification_level"] = cert;
+    }
+
+    if (q.specialization) {
+      // exact match from enum list (schema will enforce)
+      filters["requirements.required_specializations"] = String(q.specialization);
+    }
+
+    // date range on schedule.start_datetime
+    const startFrom = q.start_from ? new Date(q.start_from) : null;
+    const startTo   = q.start_to   ? new Date(q.start_to)   : null;
+    if (startFrom && isNaN(startFrom.getTime())) errors.push("start_from must be a valid date");
+    if (startTo && isNaN(startTo.getTime())) errors.push("start_to must be a valid date");
+    if (startFrom || startTo) {
+      filters["schedule.start_datetime"] = {};
+      if (startFrom) filters["schedule.start_datetime"].$gte = startFrom;
+      if (startTo)   filters["schedule.start_datetime"].$lte = startTo;
+    }
+
+    // pagination + sort
+    const page  = Math.max(1, parseInt(q.page || "1", 10));
+    const limit = Math.min(100, Math.max(1, parseInt(q.limit || "20", 10)));
+    const sortField = q.sort_by || "schedule.start_datetime"; // or posted_at
+    const sortDir   = (q.sort_dir || "asc").toLowerCase() === "desc" ? -1 : 1;
+    const sort = { [sortField]: sortDir, _id: 1 };
+
+    if (errors.length) {
+      log.warn({ msg: "clinicTaskController.listForClinic validation failed", errors });
+      return res.status(422).json({ success: false, message: "Validation failed", errors });
+    }
+
+    const result = await taskService.listForClinic(clinicId, { filters, page, limit, sort }, { reqId: req.reqId, actor: user.sub });
+    log.info({ msg: "clinicTaskController.listForClinic success", total: result.total, page: result.page, pages: result.pages });
+
+    return res.json({ success: true, ...result });
+  } catch (err) {
+    log.error({ msg: "clinicTaskController.listForClinic error", error: err.message, stack: err.stack });
+    next(err);
+  }
+};
+
+module.exports = { listForClinic, create };

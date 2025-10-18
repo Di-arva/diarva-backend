@@ -7,7 +7,6 @@ async function createForClinic(clinicId, payload, ctx = {}) {
   const log = logger.child({ reqId: ctx.reqId || "n/a", actor: ctx.actor || "n/a", clinicId });
   log.info({ msg: "taskService.createForClinic called" });
 
-  // Compute total_amount from hourly_rate * duration_hours (server-side source of truth)
   let totalAmount;
   if (payload?.compensation?.hourly_rate != null && payload?.schedule?.duration_hours != null) {
     totalAmount = Math.round(
@@ -75,4 +74,51 @@ async function createForClinic(clinicId, payload, ctx = {}) {
   return task;
 }
 
-module.exports = { createForClinic };
+async function listForClinic(clinicId, opts, ctx = {}) {
+  const log = logger.child({ reqId: ctx.reqId || "n/a", actor: ctx.actor || "n/a", clinicId });
+  const { filters = {}, page = 1, limit = 20, sort = { "schedule.start_datetime": 1 } } = opts || {};
+
+  const query = { ...filters, clinic_id: new mongoose.Types.ObjectId(clinicId) };
+  const skip = (page - 1) * limit;
+
+  log.info({ msg: "taskService.listForClinic called", page, limit, sort, filters });
+
+  const tCount = Date.now();
+  const total = await Task.countDocuments(query);
+  log.debug({ msg: "db.count Task", duration_ms: Date.now() - tCount, total });
+
+  const tList = Date.now();
+  const items = await Task.find(query)
+    .sort(sort)
+    .skip(skip)
+    .limit(limit)
+    .select({
+      title: 1,
+      status: 1,
+      priority: 1,
+      "requirements.certification_level": 1,
+      "requirements.required_specializations": 1,
+      "schedule.start_datetime": 1,
+      "schedule.end_datetime": 1,
+      "schedule.duration_hours": 1,
+      "compensation.hourly_rate": 1,
+      "compensation.currency": 1,
+      posted_at: 1,
+      applications_count: 1,
+      max_applications: 1,
+    })
+    .lean();
+  log.info({ msg: "db.find Task", duration_ms: Date.now() - tList, count: items.length });
+
+  const pages = Math.max(1, Math.ceil(total / limit));
+
+  return {
+    total,
+    page,
+    pages,
+    limit,
+    data: items,
+  };
+}
+
+module.exports = { createForClinic, listForClinic };
