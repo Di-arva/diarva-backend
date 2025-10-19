@@ -274,4 +274,194 @@ const getById = async (req, res, next) => {
   }
 };
 
-module.exports = { listForClinic, create, getById };
+const updateById = async (req, res, next) => {
+  const log = req.log || logger;
+  const user = req.user || {};
+  const { id } = req.params || {};
+  log.info({ msg: "clinicTaskController.updateById called", userId: user.sub, role: user.role, id });
+
+  try {
+    if (!mongoose.isValidObjectId(id)) {
+      log.warn({ msg: "Invalid task id", id });
+      return res.status(400).json({ success: false, message: "Invalid task id" });
+    }
+
+    const isAdmin = user.role === "admin";
+    const clinicId = user.clinic_id;
+
+    const body = req.body || {};
+    const errors = [];
+    const update = {}; // will pass to service
+
+    // title/description
+    if (body.title != null) {
+      if (!String(body.title).trim()) errors.push("title cannot be empty");
+      else update.title = String(body.title).trim();
+    }
+    if (body.description != null) {
+      if (!String(body.description).trim()) errors.push("description cannot be empty");
+      else update.description = String(body.description).trim();
+    }
+
+    // requirements.*
+    if (body.requirements) {
+      update.requirements = {};
+      const r = body.requirements;
+
+      if (r.certification_level != null) {
+        let cert = r.certification_level;
+        if (CERT_ALIASES[cert]) cert = CERT_ALIASES[cert];
+        if (!CERT_ENUM.includes(cert)) errors.push(`requirements.certification_level must be one of: ${CERT_ENUM.join(", ")}`);
+        else update.requirements.certification_level = cert;
+      }
+      if (r.minimum_experience != null) {
+        const me = Number(r.minimum_experience);
+        if (Number.isNaN(me) || me < 0) errors.push("requirements.minimum_experience must be >= 0");
+        else update.requirements.minimum_experience = me;
+      }
+      if (r.required_specializations != null) {
+        if (!Array.isArray(r.required_specializations)) {
+          errors.push("requirements.required_specializations must be an array");
+        } else {
+          const bad = r.required_specializations.filter((s) => !SPEC_ENUM.includes(s));
+          if (bad.length) errors.push(`requirements.required_specializations contains invalid values: ${bad.join(", ")}`);
+          else update.requirements.required_specializations = r.required_specializations;
+        }
+      }
+      if (r.preferred_skills != null) {
+        if (!Array.isArray(r.preferred_skills)) errors.push("requirements.preferred_skills must be an array");
+        else update.requirements.preferred_skills = r.preferred_skills;
+      }
+      // clean empty object
+      if (Object.keys(update.requirements).length === 0) delete update.requirements;
+    }
+
+    // schedule.*
+    let start, end, breakMin, recomputeDuration = false;
+    if (body.schedule) {
+      update.schedule = {};
+      const s = body.schedule;
+
+      if (s.start_datetime != null) {
+        start = parseDate(s.start_datetime);
+        if (isNaN(start.getTime())) errors.push("schedule.start_datetime must be a valid date");
+        else {
+          update.schedule.start_datetime = start;
+          recomputeDuration = true;
+        }
+      }
+      if (s.end_datetime != null) {
+        end = parseDate(s.end_datetime);
+        if (isNaN(end.getTime())) errors.push("schedule.end_datetime must be a valid date");
+        else {
+          update.schedule.end_datetime = end;
+          recomputeDuration = true;
+        }
+      }
+      if (s.break_duration_minutes != null) {
+        breakMin = Number(s.break_duration_minutes);
+        if (Number.isNaN(breakMin) || breakMin < 0 || breakMin > 180) {
+          errors.push("schedule.break_duration_minutes must be between 0 and 180");
+        } else {
+          update.schedule.break_duration_minutes = breakMin;
+          recomputeDuration = true;
+        }
+      }
+      if (s.duration_hours != null) {
+        // ignore client-provided duration; we compute if any schedule inputs changed
+        recomputeDuration = true;
+      }
+
+      if (Object.keys(update.schedule).length === 0) delete update.schedule;
+    }
+
+    // compensation.*
+    let hourlyRate, touchComp = false;
+    if (body.compensation) {
+      update.compensation = {};
+      const c = body.compensation;
+
+      if (c.hourly_rate != null) {
+        hourlyRate = Number(c.hourly_rate);
+        if (Number.isNaN(hourlyRate) || hourlyRate < 15 || hourlyRate > 100) {
+          errors.push("compensation.hourly_rate must be between 15 and 100");
+        } else {
+          update.compensation.hourly_rate = hourlyRate;
+          touchComp = true;
+        }
+      }
+      if (c.currency != null) {
+        update.compensation.currency = String(c.currency || "CAD");
+        touchComp = true;
+      }
+      if (c.payment_method != null) {
+        if (!PAY_METHOD_ENUM.includes(c.payment_method)) {
+          errors.push(`compensation.payment_method must be one of: ${PAY_METHOD_ENUM.join(", ")}`);
+        } else {
+          update.compensation.payment_method = c.payment_method;
+          touchComp = true;
+        }
+      }
+      if (c.payment_terms != null) {
+        if (!PAY_TERMS_ENUM.includes(c.payment_terms)) {
+          errors.push(`compensation.payment_terms must be one of: ${PAY_TERMS_ENUM.join(", ")}`);
+        } else {
+          update.compensation.payment_terms = c.payment_terms;
+          touchComp = true;
+        }
+      }
+      // total_amount will be recomputed in service if needed
+      if (Object.keys(update.compensation).length === 0) delete update.compensation;
+    }
+
+    // status / priority
+    if (body.status != null) {
+      if (!STATUS_ENUM.includes(body.status)) errors.push(`status must be one of: ${STATUS_ENUM.join(", ")}`);
+      else update.status = body.status;
+    }
+    if (body.priority != null) {
+      if (!PRIORITY_ENUM.includes(body.priority)) errors.push(`priority must be one of: ${PRIORITY_ENUM.join(", ")}`);
+      else update.priority = body.priority;
+    }
+
+    // location_details & other fields
+    if (body.location_details != null) update.location_details = body.location_details;
+    if (body.max_applications != null) {
+      const ma = Number(body.max_applications);
+      if (Number.isNaN(ma) || ma < 1 || ma > 1000) errors.push("max_applications must be 1..1000");
+      else update.max_applications = ma;
+    }
+    if (body.auto_assign != null) update.auto_assign = Boolean(body.auto_assign);
+    if (body.requires_background_check != null) update.requires_background_check = Boolean(body.requires_background_check);
+    if (body.application_deadline != null) {
+      const ad = parseDate(body.application_deadline);
+      if (isNaN(ad.getTime())) errors.push("application_deadline must be a valid date");
+      else update.application_deadline = ad;
+    }
+    if (body.notes != null) update.notes = String(body.notes);
+
+    if (errors.length) {
+      log.warn({ msg: "clinicTaskController.updateById validation failed", errors });
+      return res.status(422).json({ success: false, message: "Validation failed", errors });
+    }
+
+    const result = await taskService.updateForClinic(
+      id,
+      { update, recomputeDuration, touchComp },
+      { reqId: req.reqId, actor: user.sub, clinicId, isAdmin }
+    );
+
+    if (!result) {
+      log.info({ msg: "Task not found or not in clinic scope", id, clinicId, isAdmin });
+      return res.status(404).json({ success: false, message: "Task not found" });
+    }
+
+    log.info({ msg: "clinicTaskController.updateById success", taskId: id });
+    return res.json({ success: true, data: { id } });
+  } catch (err) {
+    log.error({ msg: "clinicTaskController.updateById error", error: err.message, stack: err.stack });
+    next(err);
+  }
+};
+
+module.exports = { listForClinic, create, getById, updateById };
