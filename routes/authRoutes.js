@@ -15,8 +15,7 @@ const {
   uploadCertificate,
 } = require("../controllers/authController");
 const { rateLimiterForAuth } = require("../middlewares/rateLimiter");
-const { requireAuth } = require("../middlewares/auth");
-const { requireRole } = require("../middlewares/requireRole");
+const { requireAuth, requireRole } = require("../middlewares/auth");
 const { upload } = require("../middlewares/upload");
 
 router.post("/register", register);
