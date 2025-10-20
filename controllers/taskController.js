@@ -1,9 +1,7 @@
-// controllers/clinicTaskController.js
 const logger = require("../config/logger");
 const taskService = require("../services/taskService");
 const mongoose = require("mongoose");
 
-// Schema enums (mirror model)
 const CERT_ENUM = ["Level_I", "Level_II", "RDA", "CDA", "PDA", "Any"];
 const SPEC_ENUM = [
   "Chairside Assisting",
@@ -20,7 +18,6 @@ const PAY_METHOD_ENUM = ["Cash", "E-transfer", "Cheque", "Direct Deposit"];
 const PAY_TERMS_ENUM = ["Immediate", "Same Day", "Next Day", "Weekly", "Bi-weekly"];
 const PRIORITY_ENUM = ["low", "normal", "high", "urgent"];
 
-// Optional: allow legacy aliases from UI if needed
 const CERT_ALIASES = {
   "level-1": "Level_I",
   "level_1": "Level_I",
@@ -81,12 +78,6 @@ const create = async (req, res, next) => {
     const breakMin = Number(schedule.break_duration_minutes ?? 30);
     if (Number.isNaN(breakMin) || breakMin < 0 || breakMin > 180) {
       errors.push("schedule.break_duration_minutes must be between 0 and 180");
-    }
-
-    // location
-    if (!body.location_details && !body.location) {
-      // your schema uses location_details; if you still keep a plain location string elsewhere, ignore this.
-      // Require at least description fields if you want; here we let location_details be optional.
     }
 
     // compensation
@@ -185,10 +176,8 @@ const listForClinic = async (req, res, next) => {
     // filters
     const filters = {};
     if (q.status) {
-      const statuses = String(q.status).split(",").map(s=>s.trim()).filter(Boolean);
-      const bad = statuses.filter(s => !STATUS_ENUM.includes(s));
-      if (bad.length) errors.push(`Invalid status: ${bad.join(", ")}`);
-      else filters.status = { $in: statuses };
+      const statuses = String(q.status).split(",").map(s => s.trim()).filter(Boolean);
+      filters.status = { $in: statuses };
     }
 
     if (q.priority) {
@@ -210,29 +199,45 @@ const listForClinic = async (req, res, next) => {
 
     // date range on schedule.start_datetime
     const startFrom = q.start_from ? new Date(q.start_from) : null;
-    const startTo   = q.start_to   ? new Date(q.start_to)   : null;
+    const startTo = q.start_to ? new Date(q.start_to) : null;
     if (startFrom && isNaN(startFrom.getTime())) errors.push("start_from must be a valid date");
     if (startTo && isNaN(startTo.getTime())) errors.push("start_to must be a valid date");
     if (startFrom || startTo) {
       filters["schedule.start_datetime"] = {};
       if (startFrom) filters["schedule.start_datetime"].$gte = startFrom;
-      if (startTo)   filters["schedule.start_datetime"].$lte = startTo;
+      if (startTo) filters["schedule.start_datetime"].$lte = startTo;
     }
 
     // pagination + sort
-    const page  = Math.max(1, parseInt(q.page || "1", 10));
+    const page = Math.max(1, parseInt(q.page || "1", 10));
     const limit = Math.min(100, Math.max(1, parseInt(q.limit || "20", 10)));
     const sortField = q.sort_by || "schedule.start_datetime"; // or posted_at
-    const sortDir   = (q.sort_dir || "asc").toLowerCase() === "desc" ? -1 : 1;
-    const sort = { [sortField]: sortDir, _id: 1 };
+    const sortDir = (q.sort_dir || "asc").toLowerCase() === "desc" ? -1 : 1;
+    const sort = {
+      [sortField]: sortDir,
+      _id: 1
+    };
 
     if (errors.length) {
       log.warn({ msg: "clinicTaskController.listForClinic validation failed", errors });
       return res.status(422).json({ success: false, message: "Validation failed", errors });
     }
 
-    const result = await taskService.listForClinic(clinicId, { filters, page, limit, sort }, { reqId: req.reqId, actor: user.sub });
-    log.info({ msg: "clinicTaskController.listForClinic success", total: result.total, page: result.page, pages: result.pages });
+    const result = await taskService.listForClinic(clinicId, {
+      filters,
+      page,
+      limit,
+      sort
+    }, {
+      reqId: req.reqId,
+      actor: user.sub
+    });
+    log.info({
+      msg: "clinicTaskController.listForClinic success",
+      total: result.total,
+      page: result.page,
+      pages: result.pages
+    });
 
     return res.json({ success: true, ...result });
   } catch (err) {
@@ -416,8 +421,9 @@ const updateById = async (req, res, next) => {
 
     // status / priority
     if (body.status != null) {
-      if (!STATUS_ENUM.includes(body.status)) errors.push(`status must be one of: ${STATUS_ENUM.join(", ")}`);
-      else update.status = body.status;
+      // Direct status updates might need more validation, e.g., can't manually set to 'assigned'.
+      // For now, we allow it.
+      update.status = body.status;
     }
     if (body.priority != null) {
       if (!PRIORITY_ENUM.includes(body.priority)) errors.push(`priority must be one of: ${PRIORITY_ENUM.join(", ")}`);
@@ -446,9 +452,7 @@ const updateById = async (req, res, next) => {
     }
 
     const result = await taskService.updateForClinic(
-      id,
-      { update, recomputeDuration, touchComp },
-      { reqId: req.reqId, actor: user.sub, clinicId, isAdmin }
+      id, { update, recomputeDuration, touchComp }, { reqId: req.reqId, actor: user.sub, clinicId, isAdmin }
     );
 
     if (!result) {
