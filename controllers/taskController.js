@@ -468,4 +468,31 @@ const updateById = async (req, res, next) => {
   }
 };
 
-module.exports = { listForClinic, create, getById, updateById };
+const cancelById = async (req, res, next) => {
+  const log = req.log || logger;
+  const user = req.user || {};
+  const { id } = req.params || {};
+  const { reason } = req.body;
+  log.info({ msg: "clinicTaskController.cancelById called", userId: user.sub, taskId: id });
+
+  try {
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ success: false, message: "Invalid task id" });
+    }
+
+    const clinicId = user.clinic_id;
+    if (!clinicId && user.role !== "admin") {
+        return res.status(403).json({ success: false, message: "Forbidden" });
+    }
+    
+    const result = await taskService.cancelForClinic(id, clinicId, reason, { reqId: req.reqId, actor: user.sub });
+
+    res.json({ success: true, message: "Task has been cancelled successfully.", data: result });
+
+  } catch (err) {
+    log.error({ msg: "clinicTaskController.cancelById error", error: err.message, stack: err.stack });
+    next(err);
+  }
+};
+
+module.exports = { listForClinic, create, getById, updateById, cancelById };
