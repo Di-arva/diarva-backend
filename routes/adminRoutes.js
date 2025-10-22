@@ -2,17 +2,22 @@ const express = require("express");
 const router = express.Router();
 
 const { requireAuth, requireRole } = require("../middlewares/auth");
-const adminController = require("../controllers/adminController");
+const { approveUser, rejectUser, listUsers, getUser, setUserStatus, getAnalytics } = require("../controllers/adminController");
 
-router.post("/users/:id/approve", requireAuth, requireRole("admin"), adminController.approveUser);
-router.put("/users/:id/approve",  requireAuth, requireRole("admin"), adminController.approveUser);
+// Analytics
+router.get("/analytics", requireAuth, requireRole("admin"), getAnalytics);
 
-router.post("/users/:id/reject",  requireAuth, requireRole("admin"), adminController.rejectUser);
-router.put("/users/:id/reject",   requireAuth, requireRole("admin"), adminController.rejectUser);
+// User Approval
+router.post("/users/:id/approve", requireAuth, requireRole("admin"), approveUser);
+router.put("/users/:id/approve",  requireAuth, requireRole("admin"), approveUser);
 
-router.get("/users", requireAuth, requireRole("admin"), adminController.listUsers);
-router.get("/users/:id", requireAuth, requireRole("admin"), adminController.getUser);
-router.patch("/users/:id/status", requireAuth, requireRole("admin"), adminController.setUserStatus);
+router.post("/users/:id/reject",  requireAuth, requireRole("admin"), rejectUser);
+router.put("/users/:id/reject",   requireAuth, requireRole("admin"), rejectUser);
+
+// User Management
+router.get("/users", requireAuth, requireRole("admin"), listUsers);
+router.get("/users/:id", requireAuth, requireRole("admin"), getUser);
+router.patch("/users/:id/status", requireAuth, requireRole("admin"), setUserStatus);
 
 
 router.get("/__health", (req, res) => res.json({ ok: true, scope: "admin" }));

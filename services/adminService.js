@@ -82,8 +82,55 @@ async function setUserStatus(userId, isActive, adminId) {
     return { userId: user._id, isActive: user.is_active };
 }
 
+async function getAnalytics() {
+  logger.info("Fetching admin analytics dashboard data.");
+
+  const userCounts = await User.aggregate([
+    { $group: { _id: "$role", count: { $sum: 1 } } },
+  ]);
+
+  const userApprovalCounts = await User.aggregate([
+    { $group: { _id: "$approval_status", count: { $sum: 1 } } },
+  ]);
+
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const newUsersLast30Days = await User.countDocuments({
+    createdAt: { $gte: thirtyDaysAgo },
+  });
+
+  const taskCounts = await Task.aggregate([
+    { $group: { _id: "$status", count: { $sum: 1 } } },
+  ]);
+
+  const analytics = {
+    users: {
+      total: userCounts.reduce((acc, curr) => acc + curr.count, 0),
+      byRole: userCounts.reduce(
+        (acc, curr) => ({ ...acc, [curr._id]: curr.count }),
+        {}
+      ),
+      byApprovalStatus: userApprovalCounts.reduce(
+        (acc, curr) => ({ ...acc, [curr._id]: curr.count }),
+        {}
+      ),
+      newLast30Days: newUsersLast30Days,
+    },
+    tasks: {
+      total: taskCounts.reduce((acc, curr) => acc + curr.count, 0),
+      byStatus: taskCounts.reduce(
+        (acc, curr) => ({ ...acc, [curr._id]: curr.count }),
+        {}
+      ),
+    },
+  };
+
+  return analytics;
+}
+
 module.exports = {
     listUsers,
     getUserDetails,
     setUserStatus,
+    getAnalytics
 };
