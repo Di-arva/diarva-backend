@@ -17,6 +17,7 @@ async function uploadCertificateToS3(fileBuffer, originalName, mimetype) {
     Key: key,
     Body: fileBuffer,
     ContentType: mimetype,
+    ACL: 'public-read'
   });
 
   await s3.send(command);
