@@ -1,9 +1,15 @@
 const { ses, sns, s3 } = require("../config/aws");
 const { SendEmailCommand } = require("@aws-sdk/client-ses");
-const { PublishCommand } = require("@aws-sdk/client-sns");
+// const { PublishCommand } = require("@aws-sdk/client-sns");
 const { PutObjectCommand } = require("@aws-sdk/client-s3");
 const crypto = require("crypto");
 const path = require("path");
+const twilio = require('twilio');
+
+// Initialize the Twilio client with credentials from environment variables
+const accountSid = process.env.TWILIO_ACCOUNT_SID;
+const authToken = process.env.TWILIO_AUTH_TOKEN;
+const twilioClient = twilio(accountSid, authToken);
 
 const BUCKET = process.env.AWS_S3_BUCKET;
 const REGION = process.env.AWS_REGION 
@@ -75,21 +81,44 @@ async function sendEmailOtp(to, code) {
   return sendEmail({ to, subject, html, text });
 }
 
+// async function sendSmsOtp(toE164, code) {
+//   const ttl = process.env.OTP_TTL_MINUTES || 10;
+//   const msg = `Diarva code: ${code}. Expires in ${ttl} min.`;
+//   const cmd = new PublishCommand({
+//     Message: msg,
+//     PhoneNumber: toE164,
+//     MessageAttributes: {
+//       "AWS.SNS.SMS.SenderID": {
+//         DataType: "String",
+//         StringValue: process.env.SMS_SENDER_ID || "DIARVA",
+//       },
+//       "AWS.SNS.SMS.SMSType": { DataType: "String", StringValue: "Transactional" },
+//     },
+//   });
+//   return sns.send(cmd);
+// }
+
+// Import the Twilio helper library
+
+
 async function sendSmsOtp(toE164, code) {
   const ttl = process.env.OTP_TTL_MINUTES || 10;
   const msg = `Diarva code: ${code}. Expires in ${ttl} min.`;
-  const cmd = new PublishCommand({
-    Message: msg,
-    PhoneNumber: toE164,
-    MessageAttributes: {
-      "AWS.SNS.SMS.SenderID": {
-        DataType: "String",
-        StringValue: process.env.SMS_SENDER_ID || "DIARVA",
-      },
-      "AWS.SNS.SMS.SMSType": { DataType: "String", StringValue: "Transactional" },
-    },
-  });
-  return sns.send(cmd);
+  
+  const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
+
+  try {
+    const message = await twilioClient.messages.create({
+      body: msg,
+      from: twilioPhoneNumber, 
+      to: toE164,
+    });
+    console.log(`Message sent successfully with SID: ${message.sid}`);
+    return message;
+  } catch (error) {
+    console.error("Failed to send SMS via Twilio:", error);
+    throw error; 
+  }
 }
 
 async function sendSetPasswordEmail(to, link, ttlMinutes) {
