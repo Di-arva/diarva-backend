@@ -35,7 +35,7 @@ const clinicSchema = new mongoose.Schema(
     },
 
     contact: {
-      phone: { type: String, required: true },
+      phone: { type: String },
       fax: { type: String },
       website: { type: String },
     },
