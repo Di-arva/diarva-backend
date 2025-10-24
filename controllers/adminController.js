@@ -81,4 +81,14 @@ const setUserStatus = async (req, res, next) => {
   }
 };
 
-module.exports = { approveUser, rejectUser, listUsers, getUser, setUserStatus };
+const getAnalytics = async (req, res, next) => {
+  try {
+    const data = await adminService.getAnalytics();
+    res.json({ success: true, data });
+  } catch (err) {
+    logger.error(err);
+    next(err);
+  }
+};
+
+module.exports = { approveUser, rejectUser, listUsers, getUser, setUserStatus, getAnalytics };

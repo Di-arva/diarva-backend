@@ -94,7 +94,8 @@ const register = async (payload) => {
 
   verifyVerificationToken(email_verification_token, { channel: "email", identifier: email });
 
-  const exists = await User.findOne({ $or: [{ email }, { mobile }] });
+  const exists = await User.findOne({ email });
+
   if (exists) {
     logger.error("Email or mobile already registered");
     throw new apiError(
