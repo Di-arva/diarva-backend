@@ -206,151 +206,136 @@ async function updateForClinic(taskId, opts, ctx = {}) {
     touchComp = false,
   } = opts || {};
 
-  // Build scope
-  const query = { _id: new mongoose.Types.ObjectId(taskId) };
-  if (!ctx.isAdmin) {
-    if (!ctx.clinicId) return null;
-    query.clinic_id = new mongoose.Types.ObjectId(ctx.clinicId);
-  }
-
-  // If we have to recompute duration or total_amount, we may need current doc
-  let current = null;
-  if (recomputeDuration || touchComp) {
-    const t0 = Date.now();
-    current = await Task.findOne(query).lean();
-    log.info({
-      msg: "db.findOne Task (for recompute)",
-      duration_ms: Date.now() - t0,
-      found: !!current,
-    });
-    if (!current) return null;
-  }
-
-  // Recompute duration_hours (server truth)
-  if (recomputeDuration) {
-    const start =
-      update.schedule?.start_datetime != null
-        ? new Date(update.schedule.start_datetime)
-        : new Date(current.schedule.start_datetime);
-    const end =
-      update.schedule?.end_datetime != null
-        ? new Date(update.schedule.end_datetime)
-        : new Date(current.schedule.end_datetime);
-    const breakMin =
-      update.schedule?.break_duration_minutes != null
-        ? Number(update.schedule.break_duration_minutes)
-        : Number(current.schedule.break_duration_minutes ?? 30);
-
-    if (
-      !(start instanceof Date && !isNaN(start)) ||
-      !(end instanceof Date && !isNaN(end))
-    ) {
-      // if dates missing/invalid after merge, don't update duration
-    } else {
-      const rawHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-      const duration = Math.max(0, rawHours - breakMin / 60);
-      if (!update.schedule) update.schedule = {};
-      update.schedule.duration_hours = Math.round(duration * 100) / 100;
-    }
-  }
-
-  // Recompute compensation.total_amount if rate or duration changed
-  if (
-    touchComp ||
-    (recomputeDuration && update.schedule?.duration_hours != null)
-  ) {
-    const rate =
-      update.compensation?.hourly_rate != null
-        ? Number(update.compensation.hourly_rate)
-        : Number(current.compensation.hourly_rate);
-    const duration =
-      update.schedule?.duration_hours != null
-        ? Number(update.schedule.duration_hours)
-        : Number(current.schedule.duration_hours);
-
-    if (!isNaN(rate) && !isNaN(duration)) {
-      if (!update.compensation) update.compensation = {};
-      update.compensation.total_amount =
-        Math.round(rate * duration * 100) / 100;
-    }
-  }
-
-  // Always bump updated_at (your schema also has timestamps)
-  update.updated_at = new Date();
-
-  const t1 = Date.now();
-  const result = await Task.updateOne(query, { $set: update });
-  log.info({
-    msg: "db.updateOne Task",
-    duration_ms: Date.now() - t1,
-    matched: result.matchedCount,
-    modified: result.modifiedCount,
-  });
-
-  if (result.matchedCount === 0) return null;
-
-  return { ok: true };
-}
-
-async function updateForClinic(taskId, opts, ctx = {}) {
-  const log = logger.child({
-    reqId: ctx.reqId || "n/a",
-    actor: ctx.actor || "n/a",
-    taskId,
-    clinicId: ctx.clinicId,
-    isAdmin: ctx.isAdmin
-  });
-
-  const { update = {}, recomputeDuration = false, touchComp = false } = opts || {};
-  
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
     const query = { _id: new mongoose.Types.ObjectId(taskId) };
     if (!ctx.isAdmin) {
-      if (!ctx.clinicId) throw new Error("Clinic ID is required for this operation.");
+      if (!ctx.clinicId)
+        throw new Error("Clinic ID is required for this operation.");
       query.clinic_id = new mongoose.Types.ObjectId(ctx.clinicId);
     }
 
     const current = await Task.findOne(query).session(session);
     if (!current) {
-      throw new Error("Task not found or you do not have permission to modify it.");
+      throw new Error(
+        "Task not found or you do not have permission to modify it."
+      );
     }
-    
-    // *** STATE TRANSITION VALIDATION ***
+
     if (update.status && current.status !== update.status) {
-        const fromStatus = current.status;
-        const toStatus = update.status;
-        const allowedTransitions = stateTransitionRules[fromStatus];
-        if (!allowedTransitions || !allowedTransitions.includes(toStatus)) {
-            throw new Error(`Invalid status transition from '${fromStatus}' to '${toStatus}'.`);
-        }
+      const fromStatus = current.status;
+      const toStatus = update.status;
+      const allowedTransitions = stateTransitionRules[fromStatus];
+      if (!allowedTransitions || !allowedTransitions.includes(toStatus)) {
+        throw new Error(
+          `Invalid status transition from '${fromStatus}' to '${toStatus}'.`
+        );
+      }
     }
 
-    // Apply updates to the document
-    Object.assign(current, update);
+    const fieldsToUpdate = [
+      "title",
+      "description",
+      "status",
+      "priority",
+      "location_details",
+      "max_applications",
+      "auto_assign",
+      "requires_background_check",
+      "application_deadline",
+      "notes",
+    ];
+
+    fieldsToUpdate.forEach((field) => {
+      if (update[field] !== undefined) {
+        current[field] = update[field];
+      }
+    });
+
+    if (update.requirements) {
+      current.requirements = {
+        ...current.requirements,
+        ...update.requirements,
+      };
+    }
+    if (update.schedule) {
+      current.schedule = { ...current.schedule, ...update.schedule };
+    }
+    if (update.compensation) {
+      current.compensation = {
+        ...current.compensation,
+        ...update.compensation,
+      };
+    }
+
+    if (recomputeDuration) {
+      const start = current.schedule.start_datetime;
+      const end = current.schedule.end_datetime;
+      const breakMin = current.schedule.break_duration_minutes ?? 30;
+
+      if (
+        start instanceof Date &&
+        !isNaN(start) &&
+        end instanceof Date &&
+        !isNaN(end)
+      ) {
+        const rawHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+        const duration = Math.max(0, rawHours - breakMin / 60);
+        current.schedule.duration_hours = Math.round(duration * 100) / 100;
+        log.info({
+          msg: "Recomputed duration_hours",
+          taskId: current._id,
+          newDuration: current.schedule.duration_hours,
+        });
+      } else {
+        log.warn({
+          msg: "Could not recompute duration due to invalid dates",
+          taskId: current._id,
+        });
+      }
+    }
+
+    if (touchComp || recomputeDuration) {
+      const rate = current.compensation.hourly_rate;
+      const duration = current.schedule.duration_hours;
+
+      if (typeof rate === "number" && typeof duration === "number") {
+        current.compensation.total_amount =
+          Math.round(rate * duration * 100) / 100;
+        log.info({
+          msg: "Recomputed total_amount",
+          taskId: current._id,
+          newTotalAmount: current.compensation.total_amount,
+        });
+      } else {
+        log.warn({
+          msg: "Could not recompute total_amount due to invalid rate/duration",
+          taskId: current._id,
+        });
+      }
+    }
+
     current.updated_at = new Date();
-
-    // Recompute fields if necessary (logic similar to previous implementation but on the hydrated model)
-    // ...
-
     await current.save({ session });
 
-    // *** WORK HISTORY CREATION ***
-    if (update.status === 'completed') {
-        await workHistoryService.createFromTask(current, session);
+    if (current.status === "completed") {
+      await workHistoryService.createFromTask(current, session);
     }
 
     await session.commitTransaction();
 
-    log.info({ msg: "db.updateOne Task successful", taskId: current._id });
-    
-    return { ok: true, id: current._id };
+    log.info({ msg: "Task update successful", taskId: current._id });
 
+    return { ok: true, id: current._id };
   } catch (error) {
     await session.abortTransaction();
-    log.error({ msg: "taskService.updateForClinic error", error: error.message });
+    log.error({
+      msg: "taskService.updateForClinic error",
+      error: error.message,
+      stack: error.stack,
+    });
     throw error;
   } finally {
     session.endSession();
