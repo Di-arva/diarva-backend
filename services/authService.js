@@ -181,10 +181,8 @@ const register = async (payload) => {
   }
 };
 
-const login = async ({ emailOrMobile, password, ip, userAgent }) => {
-  const user = await User.findOne({
-    $or: [{ email: emailOrMobile }, { mobile: emailOrMobile }],
-  });
+const login = async ({ email, password, ip, userAgent }) => {
+  let user = await User.findOne({ email });
   if (!user) throw new Error("Invalid credentials");
 
   if (user.locked_until && user.locked_until > new Date()) {
@@ -213,7 +211,13 @@ const login = async ({ emailOrMobile, password, ip, userAgent }) => {
   user.login_attempts = 0;
   user.locked_until = undefined;
 
-  const payload = { sub: user._id.toString(), role: user.role };
+  let clinicData;
+
+  if (user.role === "clinic") {
+    clinicData = await Clinic.findOne({ user_id: user._id });
+  }
+
+  const payload = { sub: user._id.toString(), role: user.role, email: user.email, clinic_id: clinicData?._id || "" };
   const accessToken = createAccessToken(payload);
   const refreshToken = createRefreshToken(payload);
 
@@ -248,9 +252,16 @@ const refreshTokens = async (presentedToken) => {
   user.refresh_tokens = user.refresh_tokens.filter(
     (t) => t.token_hash !== presentedHash
   );
+
+  if (user.role === "clinic") {
+    clinicData = await Clinic.findOne({ user_id: user._id });
+  }
+
   const newRefresh = createRefreshToken({
     sub: user._id.toString(),
     role: user.role,
+    email: user.email,
+    clinic_id: clinicData?._id || ""
   });
   user.refresh_tokens.push({ token_hash: hashToken(newRefresh) });
   await user.save();
@@ -258,6 +269,8 @@ const refreshTokens = async (presentedToken) => {
   const newAccess = createAccessToken({
     sub: user._id.toString(),
     role: user.role,
+    email: user.email,
+    clinic_id: clinicData?._id || ""
   });
   return { accessToken: newAccess, refreshToken: newRefresh, user };
 };

@@ -44,7 +44,7 @@ const login = async (req, res, next) => {
     const ip = req.ip;
     const userAgent = req.get("User-Agent");
     const { user, accessToken, refreshToken } = await authService.login({
-      emailOrMobile: identifier,
+      email: identifier,
       password,
       ip,
       userAgent,
