@@ -70,18 +70,18 @@ const create = async (req, res, next) => {
     // }
 
     // required_specializations (if given) must be valid
-    if (Array.isArray(reqs.required_specializations)) {
-      const invalidSpecs = reqs.required_specializations.filter(
-        (s) => !SPEC_ENUM.includes(s)
-      );
-      if (invalidSpecs.length) {
-        errors.push(
-          `requirements.required_specializations contains invalid values: ${invalidSpecs.join(
-            ", "
-          )}`
-        );
-      }
-    }
+    // if (Array.isArray(reqs.required_specializations)) {
+    //   const invalidSpecs = reqs.required_specializations.filter(
+    //     (s) => !SPEC_ENUM.includes(s)
+    //   );
+    //   if (invalidSpecs.length) {
+    //     errors.push(
+    //       `requirements.required_specializations contains invalid values: ${invalidSpecs.join(
+    //         ", "
+    //       )}`
+    //     );
+    //   }
+    // }
 
     // schedule
     const schedule = body.schedule || {};
