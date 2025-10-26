@@ -9,13 +9,12 @@ const taskSchema = new mongoose.Schema(
     },
 
     title: { type: String, required: true, trim: true, maxlength: 100 },
-    description: { type: String, required: true, trim: true, maxlength: 1000 },
+    description: { type: String, trim: true, maxlength: 1000 },
 
     requirements: {
       certification_level: {
         type: String,
-        enum: ["Level_I", "Level_II", "RDA", "CDA", "PDA", "Any"],
-        required: true,
+        enum: ["Level_I", "Level_II", "HARP"],
       },
       minimum_experience: { type: Number, min: 0, default: 0 },
       required_specializations: [
