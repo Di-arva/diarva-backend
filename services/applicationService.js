@@ -4,8 +4,7 @@ const Task = require("../models/Task");
 const User = require("../models/User");
 const logger = require("../config/logger");
 const { sendEmail } = require("./commService");
-
-const CERT_ENUM = ["Level_I", "Level_II", "HARP"];
+const AssistantProfile = require("../models/AssistantProfile");
 
 async function listApplicationsForTask(taskId, clinicId) {
   logger.info(`Listing applications for task ${taskId} for clinic ${clinicId}`);
@@ -241,15 +240,6 @@ async function discoverForAssistant(userId, opts, ctx = {}) {
   } = opts || {};
   const query = { ...filters, status: { $in: ["open"] } };
 
-  // Matching logic:
-  //  - requirements.certification_level must be either "Any" OR equal to assistant cert
-  //  - if required_specializations exists, at least one should match assistant's specs
-  const certClause = [];
-  certClause.push({ "requirements.certification_level": "Any" });
-  if (cert && CERT_ENUM.includes(cert))
-    certClause.push({ "requirements.certification_level": cert });
-  query.$or = certClause;
-
   // specialization match (if task requires any and assistant has any overlap)
   // If the filter already set specialization, we keep it; otherwise ensure overlap if field exists
   if (
@@ -298,11 +288,9 @@ async function discoverForAssistant(userId, opts, ctx = {}) {
     .limit(limit)
     .select({
       title: 1,
-
       clinic_id: 1,
       status: 1,
       priority: 1,
-      "requirements.certification_level": 1,
       "requirements.required_specializations": 1,
       "schedule.start_datetime": 1,
       "schedule.end_datetime": 1,
