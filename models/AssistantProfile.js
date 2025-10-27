@@ -13,7 +13,7 @@ const assistantProfileSchema = new mongoose.Schema(
       certificates: { type: [String], default: [] },
       certification_level: {
         type: String,
-        required: true,
+    
       },
       provincial_licenses: [
         {
