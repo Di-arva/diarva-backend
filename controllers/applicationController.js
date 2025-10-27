@@ -149,7 +149,7 @@ const discover = async (req, res, next) => {
       return res.status(422).json({ success: false, message: "Validation failed", errors });
     }
 
-    const result = await assistantTaskService.discoverForAssistant(
+    const result = await applicationService.discoverForAssistant(
       user.sub,
       { page, limit, sort, filters },
       { reqId: req.reqId, actor: user.sub }
@@ -175,7 +175,7 @@ const applyToTask = async (req, res, next) => {
       return res.status(400).json({ success: false, message: "Invalid task id" });
     }
 
-    const result = await assistantTaskService.apply(user.sub, id, { reqId: req.reqId, actor: user.sub });
+    const result = await applicationService.apply(user.sub, id, { reqId: req.reqId, actor: user.sub });
     if (!result?.ok) {
       log.warn({ msg: "applyToTask failed", reason: result?.reason });
       return res.status(result?.status || 400).json({ success: false, message: result?.message || "Unable to apply" });
