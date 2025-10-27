@@ -6,7 +6,7 @@ const Task = require("../models/Task");
 const User = require("../models/User");
 const logger = require("../config/logger");
 const { sendEmail } = require("./commService");
-const AssistantProfile = require("../models/AssistantProfile");
+
 
 async function listApplicationsForTask(taskId, clinicId) {
   logger.info(`Listing applications for task ${taskId} for clinic ${clinicId}`);
@@ -365,8 +365,8 @@ async function apply(userId, taskId, ctx = {}) {
     const t1 = Date.now();
     const dup = await Application.findOne({
       task_id: task._id,
-      assistant_id: new mongoose.Types.ObjectId(userId),
-      status: { $in: ["applied", "under_review", "accepted", "assigned"] },
+      applicant_id: new mongoose.Types.ObjectId(userId),
+      status: { $in: ["pending", "under_review", "accepted", "assigned"] },
     }).session(session);
     log.info({
       msg: "db.findOne Application duplicate check",
@@ -388,9 +388,10 @@ async function apply(userId, taskId, ctx = {}) {
     // Create application
     const appDoc = new Application({
       task_id: task._id,
-      assistant_id: new mongoose.Types.ObjectId(userId),
+      applicant_id: new mongoose.Types.ObjectId(userId),
       clinic_id: task.clinic_id,
-      status: "applied",
+      status: "pending",
+      availability_confirmation: true,
       applied_at: new Date(),
     });
 

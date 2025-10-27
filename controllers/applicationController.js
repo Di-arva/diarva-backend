@@ -189,6 +189,68 @@ const applyToTask = async (req, res, next) => {
   }
 };
 
+//get applications made by Nishi
+
+const getMyApplications = async (req, res, next) => {
+  const log = req.log || logger;
+  const user = req.user || {};
+  log.info({ msg: "applicationController.getMyApplications called", userId: user.sub });
+
+  try {
+    const q = req.query || {};
+    
+    // Pagination
+    const page = Math.max(1, parseInt(q.page || "1", 10));
+    const limit = Math.min(100, Math.max(1, parseInt(q.limit || "20", 10)));
+    const skip = (page - 1) * limit;
+
+    // Build query
+    const query = { applicant_id: user.sub };
+    
+    // Optional status filter
+    if (q.status && ["pending", "under_review", "accepted", "rejected", "withdrawn"].includes(q.status)) {
+      query.status = q.status;
+    }
+
+    // Get applications with populated data
+    const applications = await mongoose.model("Application")
+      .find(query)
+      .populate("task_id", "title schedule compensation requirements status clinic_id")
+      .populate("clinic_id", "name address city province phone email")
+      .sort({ applied_at: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    // Get total count for pagination
+    const total = await mongoose.model("Application").countDocuments(query);
+
+    log.info({ 
+      msg: "applicationController.getMyApplications success", 
+      total, 
+      page, 
+      returned: applications.length 
+    });
+
+    res.json({
+      success: true,
+      data: applications,
+      total,
+      page,
+      pages: Math.ceil(total / limit),
+      limit
+    });
+
+  } catch (err) {
+    log.error({ 
+      msg: "applicationController.getMyApplications error", 
+      error: err.message, 
+      stack: err.stack 
+    });
+    next(err);
+  }
+};
+
 
 module.exports = {
     listForTask,
@@ -196,5 +258,6 @@ module.exports = {
     reject,
     withdraw,
     discover,
-    applyToTask
+    applyToTask,
+  getMyApplications
 };
