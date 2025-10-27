@@ -112,6 +112,7 @@ async function acceptApplication(applicationId, clinicId, adminId) {
     session.endSession();
   }
 }
+
 async function rejectApplication(applicationId, clinicId) {
   const application = await Application.findById(applicationId).populate(
     "applicant_id"
@@ -297,7 +298,7 @@ async function discoverForAssistant(userId, opts, ctx = {}) {
     .limit(limit)
     .select({
       title: 1,
-   
+
       clinic_id: 1,
       status: 1,
       priority: 1,
@@ -456,4 +457,6 @@ module.exports = {
   acceptApplication,
   rejectApplication,
   withdrawApplication,
+  discoverForAssistant,
+  apply
 };
