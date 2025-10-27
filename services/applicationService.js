@@ -1,4 +1,6 @@
 const mongoose = require("mongoose");
+const AssistantProfile = require("../models/AssistantProfile");
+
 const Application = require("../models/Application");
 const Task = require("../models/Task");
 const User = require("../models/User");
