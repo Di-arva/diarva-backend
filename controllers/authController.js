@@ -19,9 +19,8 @@ const register = async (req, res, next) => {
       province: req?.body?.province,
       role: req?.body?.role,
 
-      certification: req?.body?.certification,
-      specializations: req?.body?.specializations || [],
       emergency_contact: req?.body?.emergency_contact || {},
+      professional_info: req?.body?.professional_info || {},
 
       email_verification_token: req?.body?.email_verification_token,
       phone_verification_token: req?.body?.phone_verification_token,

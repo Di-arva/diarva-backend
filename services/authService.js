@@ -72,12 +72,10 @@ const register = async (payload) => {
     zipcode,
     province,
     role,
-    certification,
-    specializations = [],
     emergency_contact = {},
-    certificates = [],
     email_verification_token,
     phone_verification_token,
+    professional_info
   } = payload;
 
   if(role === "assistant"){
@@ -126,19 +124,10 @@ const register = async (payload) => {
 
     await user.save({ session });
 
-    const certLevel = certification;
-
     if (role === "assistant") {
       const assistantProfile = new AssistantProfile({
         user_id: user._id,
-        professional_info: {
-          certification_level: certLevel,
-          experience_years: 0,
-          specializations: Array.isArray(specializations)
-            ? specializations
-            : [],
-          certificates: certificates || [],
-        },
+        professional_info,
         emergency_contact: {
           name: emergency_contact.name,
           relationship: emergency_contact.relationship,
