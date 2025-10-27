@@ -39,7 +39,7 @@ async function createForClinic(clinicId, payload, ctx = {}) {
     clinic_id: new mongoose.Types.ObjectId(clinicId),
 
     title: payload.title,
-    description: payload.description,
+   
 
     requirements: {
       certification_level: payload.requirements.certification_level,
@@ -237,7 +237,7 @@ async function updateForClinic(taskId, opts, ctx = {}) {
 
     const fieldsToUpdate = [
       "title",
-      "description",
+
       "status",
       "priority",
       "location_details",

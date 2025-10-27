@@ -2,7 +2,7 @@ const logger = require("../config/logger");
 const taskService = require("../services/taskService");
 const mongoose = require("mongoose");
 
-const CERT_ENUM = ["Level_I", "Level_II", "RDA", "CDA", "PDA", "Any"];
+const CERT_ENUM = ["Level_I", "Level_II", "HARP"];
 const SPEC_ENUM = [
   "Chairside Assisting",
   "Dental Radiography",
@@ -31,7 +31,7 @@ const CERT_ALIASES = {
   "level-2": "Level_II",
   level_2: "Level_II",
   "Level-2": "Level_II",
-  harp: "RDA", // if you consider HARP as radiography requirement; adjust if not desired
+  harp: "HARP", // if you consider HARP as radiography requirement; adjust if not desired
 };
 
 const parseDate = (v) => (v instanceof Date ? v : new Date(v));
@@ -113,8 +113,7 @@ const create = async (req, res, next) => {
     const rate = Number(comp.hourly_rate);
     if (Number.isNaN(rate))
       errors.push("compensation.hourly_rate must be a number");
-    else if (rate < 15 || rate > 100)
-      errors.push("compensation.hourly_rate must be between 15 and 100");
+   
 
     if (comp.payment_method && !PAY_METHOD_ENUM.includes(comp.payment_method)) {
       errors.push(
@@ -162,7 +161,7 @@ const create = async (req, res, next) => {
 
     const cleanPayload = {
       title: body.title.trim(),
-      description: body.description.trim(),
+  
       requirements: {
         certification_level: cert,
         minimum_experience: Number(reqs.minimum_experience ?? 0),
@@ -418,11 +417,7 @@ const updateById = async (req, res, next) => {
       if (!String(body.title).trim()) errors.push("title cannot be empty");
       else update.title = String(body.title).trim();
     }
-    if (body.description != null) {
-      if (!String(body.description).trim())
-        errors.push("description cannot be empty");
-      else update.description = String(body.description).trim();
-    }
+    
 
     // requirements.*
     if (body.requirements) {
@@ -529,8 +524,8 @@ const updateById = async (req, res, next) => {
 
       if (c.hourly_rate != null) {
         hourlyRate = Number(c.hourly_rate);
-        if (Number.isNaN(hourlyRate) || hourlyRate < 15 || hourlyRate > 100) {
-          errors.push("compensation.hourly_rate must be between 15 and 100");
+        if (Number.isNaN(hourlyRate)) {
+          errors.push("compensation.hourly_rate must be in Numbers");
         } else {
           update.compensation.hourly_rate = hourlyRate;
           touchComp = true;

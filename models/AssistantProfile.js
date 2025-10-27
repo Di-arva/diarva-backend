@@ -55,8 +55,8 @@ const assistantProfileSchema = new mongoose.Schema(
 
     work_preferences: {
       hourly_rate: {
-        min: { type: Number, min: 15, max: 100 },
-        max: { type: Number, min: 15, max: 100 },
+        min: { type: Number},
+        max: { type: Number},
       },
       currency: { type: String, default: "CAD" },
       travel_radius_km: { type: Number, min: 5, max: 100, default: 25 },

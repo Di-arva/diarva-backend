@@ -3,7 +3,7 @@ const logger = require("../config/logger");
 const mongoose = require("mongoose");
 
 const STATUS_ENUM = ["open"]; // discover only “open” tasks by default
-const CERT_ENUM = ["Level_I", "Level_II", "RDA", "CDA", "PDA", "Any"];
+const CERT_ENUM = ["Level_I", "Level_II","HARP"];
 const SPEC_ENUM = [
   "Chairside Assisting","Dental Radiography","Infection Control","Preventive Dentistry",
   "Orthodontic Assisting","Surgical Assisting","Pediatric Assisting","Laboratory Procedures",
@@ -12,7 +12,7 @@ const SPEC_ENUM = [
 const CERT_ALIASES = {
   "level-1":"Level_I","Level-1":"Level_I","level_1":"Level_I",
   "level-2":"Level_II","Level-2":"Level_II","level_2":"Level_II",
-  harp:"RDA"
+  harp:"HARP"
 };
 
 const listForTask = async (req, res, next) => {

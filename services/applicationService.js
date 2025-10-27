@@ -5,7 +5,7 @@ const User = require("../models/User");
 const logger = require("../config/logger");
 const { sendEmail } = require("./commService");
 
-const CERT_ENUM = ["Level_I", "Level_II", "RDA", "CDA", "PDA", "Any"];
+const CERT_ENUM = ["Level_I", "Level_II", "HARP"];
 
 async function listApplicationsForTask(taskId, clinicId) {
   logger.info(`Listing applications for task ${taskId} for clinic ${clinicId}`);
@@ -297,7 +297,7 @@ async function discoverForAssistant(userId, opts, ctx = {}) {
     .limit(limit)
     .select({
       title: 1,
-      description: 1,
+   
       clinic_id: 1,
       status: 1,
       priority: 1,
