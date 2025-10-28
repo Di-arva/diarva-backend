@@ -189,6 +189,72 @@ const applyToTask = async (req, res, next) => {
   }
 };
 
+// In your applicationController.js
+
+const getAllClinicApplicants = async (req, res, next) => {
+  const log = req.log || logger;
+  const user = req.user || {};
+  log.info({ msg: "applicationController.getAllClinicApplicants called", userId: user.sub });
+
+  try {
+    const clinicId = user.clinic_id || user.id; // Use clinic_id from your user object
+    
+    // Get all applications for tasks belonging to this clinic
+    const applications = await mongoose.model("Application")
+      .find()
+      .populate({
+        path: "task_id",
+        match: { clinic_id: clinicId }, // Match tasks that belong to this clinic
+        select: "title schedule compensation requirements status"
+      })
+      .populate({
+        path: "applicant_id", // Changed from assistantId to applicant_id
+        select: "name email phone location certification_level experience_years profile_image"
+      })
+      .sort({ applied_at: -1 })
+      .lean();
+
+    // Filter out applications where task is null (tasks not belonging to this clinic)
+    const filteredApplications = applications.filter(app => app.task_id !== null);
+
+    // Transform data to match frontend expectations
+    const transformedApplicants = filteredApplications.map(app => ({
+      _id: app._id,
+      name: app.applicant_id?.name || 'Unknown',
+      email: app.applicant_id?.email,
+      phone: app.applicant_id?.phone,
+      location: app.applicant_id?.location,
+      status: app.status,
+      applied_at: app.applied_at,
+      shift_title: app.task_id?.title,
+      certification_level: app.applicant_id?.certification_level,
+      experience_years: app.applicant_id?.experience_years,
+      task_id: app.task_id?._id,
+      // Add any other fields your frontend expects
+    }));
+
+    log.info({ 
+      msg: "applicationController.getAllClinicApplicants success", 
+      count: transformedApplicants.length 
+    });
+
+    res.json({
+      success: true,
+      data: transformedApplicants,
+      count: transformedApplicants.length,
+      message: "Applicants fetched successfully"
+    });
+
+  } catch (error) {
+    log.error({ 
+      msg: "applicationController.getAllClinicApplicants error", 
+      error: error.message, 
+      stack: error.stack 
+    });
+    next(error);
+  }
+};
+
 //get applications made by Nishi
 
 const getMyApplications = async (req, res, next) => {
@@ -249,6 +315,8 @@ const getMyApplications = async (req, res, next) => {
     });
     next(err);
   }
+
+
 };
 
 
@@ -259,5 +327,6 @@ module.exports = {
     withdraw,
     discover,
     applyToTask,
-  getMyApplications
+  getMyApplications,
+  getAllClinicApplicants
 };
