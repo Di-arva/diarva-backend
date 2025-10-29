@@ -2,10 +2,10 @@ const Clinic = require("../models/Clinic");
 
 const getProfile = async (req, res) => {
   try {
-    // Change this line - use the correct property from your JWT token
-    const userId = req.user.sub || req.user.id; // Try both to be safe
+
+    const userId = req.user.sub || req.user.id; 
     console.log("=== GET PROFILE DEBUG ===");
-    console.log("Full req.user object:", req.user); // Add this to see what's available
+    console.log("Full req.user object:", req.user);
     console.log("User ID from JWT token:", userId);
     console.log("User email:", req.user.email);
     console.log("User role:", req.user.role);
