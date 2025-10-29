@@ -15,6 +15,7 @@ const taskSchema = new mongoose.Schema(
       certification_level: {
         type: String,
         enum: ["Level_I", "Level_II", "HARP"],
+        required: false,
       },
       minimum_experience: { type: Number, min: 0, default: 0 },
       required_specializations: [
