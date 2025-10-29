@@ -208,8 +208,8 @@ const getAllClinicApplicants = async (req, res, next) => {
         select: "title schedule compensation requirements status"
       })
       .populate({
-        path: "applicant_id", // Changed from assistantId to applicant_id
-        select: "name email phone location certification_level experience_years profile_image"
+        path: "applicant_id",
+        select: "first_name last_name email mobile"
       })
       .sort({ applied_at: -1 })
       .lean();
@@ -217,20 +217,17 @@ const getAllClinicApplicants = async (req, res, next) => {
     // Filter out applications where task is null (tasks not belonging to this clinic)
     const filteredApplications = applications.filter(app => app.task_id !== null);
 
-    // Transform data to match frontend expectations
     const transformedApplicants = filteredApplications.map(app => ({
       _id: app._id,
-      name: app.applicant_id?.name || 'Unknown',
+      name: `${app.applicant_id?.first_name} ${app.applicant_id?.last_name}`|| 'Unknown',
       email: app.applicant_id?.email,
-      phone: app.applicant_id?.phone,
+      phone: app.applicant_id?.mobile,
       location: app.applicant_id?.location,
       status: app.status,
       applied_at: app.applied_at,
       shift_title: app.task_id?.title,
       certification_level: app.applicant_id?.certification_level,
-      experience_years: app.applicant_id?.experience_years,
       task_id: app.task_id?._id,
-      // Add any other fields your frontend expects
     }));
 
     log.info({ 
