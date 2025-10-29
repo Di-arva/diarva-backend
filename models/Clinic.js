@@ -40,6 +40,20 @@ const clinicSchema = new mongoose.Schema(
       website: { type: String },
     },
 
+    // Simplified parking information
+    parking_info: {
+      type: {
+        type: String,
+        enum: ["private", "public", "street", "none", ""],
+        default: ""
+      },
+      details: {
+        type: String,
+        trim: true,
+        maxlength: 500
+      }
+    },
+
     operating_hours: [
       {
         day: { type: Number, min: 0, max: 6, required: true },
