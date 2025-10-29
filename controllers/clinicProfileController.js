@@ -4,11 +4,7 @@ const getProfile = async (req, res) => {
   try {
 
     const userId = req.user.sub || req.user.id; 
-    console.log("=== GET PROFILE DEBUG ===");
-    console.log("Full req.user object:", req.user);
-    console.log("User ID from JWT token:", userId);
-    console.log("User email:", req.user.email);
-    console.log("User role:", req.user.role);
+    
 
     if (!userId) {
       return res.status(400).json({
@@ -81,9 +77,7 @@ const updateProfile = async (req, res) => {
     const userId = req.user.sub || req.user.id; // Use the correct property
     const { parking_info } = req.body;
 
-    console.log("=== UPDATE PROFILE DEBUG ===");
-    console.log("User ID:", userId);
-    console.log("Parking info to update:", parking_info);
+   
 
     if (!userId) {
       return res.status(400).json({
