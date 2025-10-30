@@ -45,7 +45,11 @@ const taskSchema = new mongoose.Schema(
     },
 
     compensation: {
-      hourly_rate: { type: Number, required: true },
+      hourly_rate: { type: Number },
+      percentage_pay: { 
+        percentage: { type: Number},
+        pay_type: { type: String, enum: ["collection", "production"]}
+      },
       currency: { type: String, default: "CAD" },
       total_amount: Number,
       payment_method: {
