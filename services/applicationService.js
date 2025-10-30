@@ -5,7 +5,7 @@ const Application = require("../models/Application");
 const Task = require("../models/Task");
 const User = require("../models/User");
 const logger = require("../config/logger");
-const { sendEmail } = require("./commService");
+const { sendEmail, sendSms } = require("./commService");
 
 
 async function listApplicationsForTask(taskId, clinicId) {
@@ -36,7 +36,6 @@ async function acceptApplication(applicationId, clinicId, adminId) {
       throw new Error("Task not found or does not belong to the clinic.");
     }
 
-    // STATE VALIDATION: A task can only be assigned if it's 'open'.
     if (task.status !== "open") {
       throw new Error(
         `Task cannot be assigned because its current status is '${task.status}'. It must be 'open'.`
@@ -78,15 +77,23 @@ async function acceptApplication(applicationId, clinicId, adminId) {
 
     await session.commitTransaction();
 
-    // 4. Send notifications (outside of transaction)
-    // Notify accepted assistant
-    sendEmail({
+    await sendEmail({
       to: application.applicant_id.email,
       subject: `Congratulations! Your application for "${task.title}" has been accepted.`,
       text: `Your application for the task "${task.title}" has been accepted. Please log in to your dashboard for more details.`,
     }).catch((err) =>
       logger.error(
         `Failed to send acceptance email to ${application.applicant_id.email}`,
+        err
+      )
+    );
+
+    const mobile = application.applicant_id.mobile;
+    const message = `Congratulations! Your application for "${task.title}" has been accepted.`
+
+    await sendSms(mobile, message).catch((err) =>
+      logger.error(
+        `Failed to send acceptance sms to ${mobile}`,
         err
       )
     );

@@ -73,6 +73,23 @@ async function sendEmail({
   return ses.send(cmd);
 }
 
+async function sendSms(toE164, messageText) {  
+  const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
+
+  try {
+    const message = await twilioClient.messages.create({
+      body: messageText,
+      from: twilioPhoneNumber, 
+      to: toE164,
+    });
+    console.log(`Message sent successfully with SID: ${message.sid}`);
+    return message;
+  } catch (error) {
+    console.error("Failed to send SMS via Twilio:", error);
+    throw error; 
+  }
+}
+
 async function sendEmailOtp(to, code) {
   const ttl = process.env.OTP_TTL_MINUTES || 10;
   const subject = "Your Diarva verification code";
@@ -104,17 +121,9 @@ async function sendEmailOtp(to, code) {
 async function sendSmsOtp(toE164, code) {
   const ttl = process.env.OTP_TTL_MINUTES || 10;
   const msg = `Diarva code: ${code}. Expires in ${ttl} min.`;
-  
-  const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
 
   try {
-    const message = await twilioClient.messages.create({
-      body: msg,
-      from: twilioPhoneNumber, 
-      to: toE164,
-    });
-    console.log(`Message sent successfully with SID: ${message.sid}`);
-    return message;
+    await sendSms(toE164, msg)
   } catch (error) {
     console.error("Failed to send SMS via Twilio:", error);
     throw error; 
@@ -136,6 +145,7 @@ async function sendSetPasswordEmail(to, link, ttlMinutes) {
 
 module.exports = {
   sendEmail,
+  sendSms,
   sendEmailOtp,
   sendSetPasswordEmail,
   sendSmsOtp,
