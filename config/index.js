@@ -9,7 +9,8 @@ const adminRoutes = require("../routes/adminRoutes");
 const clinicRoutes = require("../routes/clinicRoutes");
 const applicationRoutes = require("../routes/applicationRoutes");
 const assistantRoutes = require("../routes/assistantRoutes");
-const workHistoryRoutes = require("../routes/workHistoryRoutes"); // new
+const workHistoryRoutes = require("../routes/workHistoryRoutes"); 
+const visitorContactRoutes = require("../routes/visitorContact")
 
 const app = express();
 
@@ -28,6 +29,8 @@ app.use("/api/v1/clinic", clinicRoutes);
 app.use("/api/v1/applications", applicationRoutes);
 app.use("/api/v1/assistant", assistantRoutes);
 app.use("/api/v1/work-history", workHistoryRoutes);
+app.use("/api/v1", visitorContactRoutes);
+
 
 app.use(errorHandler);
 
