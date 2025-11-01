@@ -9,19 +9,39 @@ const assistantProfileSchema = new mongoose.Schema(
       unique: true,
     },
 
+    assistant_type: {
+      type: String,
+      enum: [
+        "dental-assistant",
+        "hygienist",
+        "associate-dentist",
+        "frontdesk-admin",
+      ],
+    },
+
     professional_info: {
       certificates: { type: [String], default: [] },
       certification_level: {
         type: String,
-    
       },
       provincial_licenses: [
         {
           province: {
             type: String,
             enum: [
-              "AB", "BC", "MB", "NB", "NL", "NS", "ON",
-              "PE", "QC", "SK", "NT", "NU", "YT",
+              "AB",
+              "BC",
+              "MB",
+              "NB",
+              "NL",
+              "NS",
+              "ON",
+              "PE",
+              "QC",
+              "SK",
+              "NT",
+              "NU",
+              "YT",
             ],
           },
           license_number: String,
@@ -37,7 +57,7 @@ const assistantProfileSchema = new mongoose.Schema(
       specializations: [
         {
           type: String,
-          enum: [ 
+          enum: [
             "Chairside Assisting",
             "Dental Radiography",
             "Infection Control",
@@ -47,7 +67,7 @@ const assistantProfileSchema = new mongoose.Schema(
             "Pediatric Assisting",
             "Laboratory Procedures",
             "Administrative Tasks",
-            "Hygenist"
+            "Hygenist",
           ],
         },
       ],
@@ -55,15 +75,21 @@ const assistantProfileSchema = new mongoose.Schema(
 
     work_preferences: {
       hourly_rate: {
-        min: { type: Number},
-        max: { type: Number},
+        min: { type: Number },
+        max: { type: Number },
       },
       currency: { type: String, default: "CAD" },
       travel_radius_km: { type: Number, min: 5, max: 100, default: 25 },
       preferred_work_types: [
         {
           type: String,
-          enum: ["Full-time", "Part-time", "Temporary", "Contract", "Emergency"],
+          enum: [
+            "Full-time",
+            "Part-time",
+            "Temporary",
+            "Contract",
+            "Emergency",
+          ],
         },
       ],
       minimum_hours_per_shift: { type: Number, min: 1, max: 12, default: 4 },
@@ -134,14 +160,18 @@ const assistantProfileSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-assistantProfileSchema.index(
-  { "professional_info.certification_level": 1, is_active: 1 }
-);
+assistantProfileSchema.index({
+  "professional_info.certification_level": 1,
+  is_active: 1,
+});
 assistantProfileSchema.index({ "performance_metrics.rating.average": -1 });
 assistantProfileSchema.index({
   "work_preferences.hourly_rate.min": 1,
   "work_preferences.hourly_rate.max": 1,
 });
 
-const AssistantProfile = mongoose.model("AssistantProfile", assistantProfileSchema);
+const AssistantProfile = mongoose.model(
+  "AssistantProfile",
+  assistantProfileSchema
+);
 module.exports = AssistantProfile;

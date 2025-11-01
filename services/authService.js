@@ -148,6 +148,7 @@ const register = async (payload) => {
           phone: emergency_contact.phone,
           email: emergency_contact.email,
         },
+        assistant_type,
       });
 
       await assistantProfile.save({ session });

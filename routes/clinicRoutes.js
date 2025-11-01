@@ -4,12 +4,7 @@ const { requireAuth, requireRole } = require("../middlewares/auth");
 const { create, listForClinic, getById, updateById, cancelById } = require("../controllers/taskController");
 
 const { listForTask, getAllClinicApplicants } = require("../controllers/applicationController");
-const { getProfile, updateProfile,getPublicProfile } = require("../controllers/clinicProfileController"); 
-const Clinic = require("../models/Clinic"); 
-
-
-
-
+const { getProfile, updateProfile,getPublicProfile } = require("../controllers/clinicController"); 
 
 router.post("/tasks", requireAuth, requireRole(["clinic", "admin"]), create);
 router.get("/tasks", requireAuth, requireRole(["clinic", "admin"]), listForClinic);

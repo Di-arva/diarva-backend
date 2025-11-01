@@ -11,6 +11,7 @@ const register = async (req, res, next) => {
       first_name: req?.body?.first_name,
       last_name: req?.body?.last_name,
       clinic_name: req?.body?.clinic_name || "",
+      assistant_type: req?.body?.assistant_type || "",
 
       address_line: req?.body?.address_line || "",
       city: req?.body?.city,
