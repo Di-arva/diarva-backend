@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 const User = require("../models/User");
 const AssistantProfile = require("../models/AssistantProfile");
-const Clinic = require("../models/Clinic")
+const Clinic = require("../models/Clinic");
 const logger = require("../config/logger");
 const apiError = require("../middlewares/apiError");
 
@@ -18,7 +18,11 @@ const {
   getExpiryDate,
   canResend,
 } = require("../config/otp");
-const { sendEmailOtp, sendSmsOtp } = require("../services/commService");
+const {
+  sendEmailOtp,
+  sendSmsOtp,
+  sendEmail,
+} = require("../services/commService");
 
 const REFRESH_TOKEN_HASH_ALGO = "sha256";
 const OTP_VERIFY_SECRET =
@@ -75,22 +79,32 @@ const register = async (payload) => {
     emergency_contact = {},
     email_verification_token,
     phone_verification_token,
-    professional_info
+    professional_info,
   } = payload;
 
-  if(role === "assistant"){
+  if (role === "assistant") {
     if (!phone_verification_token) {
-      throw new Error("Verification tokens are required. Please verify phone first.");
+      throw new Error(
+        "Verification tokens are required. Please verify phone first."
+      );
     }
 
-    verifyVerificationToken(phone_verification_token, { channel: "phone", identifier: mobile });
+    verifyVerificationToken(phone_verification_token, {
+      channel: "phone",
+      identifier: mobile,
+    });
   }
 
   if (!email_verification_token) {
-    throw new Error("Verification tokens are required. Please verify email first.");
+    throw new Error(
+      "Verification tokens are required. Please verify email first."
+    );
   }
 
-  verifyVerificationToken(email_verification_token, { channel: "email", identifier: email });
+  verifyVerificationToken(email_verification_token, {
+    channel: "email",
+    identifier: email,
+  });
 
   const exists = await User.findOne({ email });
 
@@ -206,7 +220,12 @@ const login = async ({ email, password, ip, userAgent }) => {
     clinicData = await Clinic.findOne({ user_id: user._id });
   }
 
-  const payload = { sub: user._id.toString(), role: user.role, email: user.email, clinic_id: clinicData?._id || "" };
+  const payload = {
+    sub: user._id.toString(),
+    role: user.role,
+    email: user.email,
+    clinic_id: clinicData?._id || "",
+  };
   const accessToken = createAccessToken(payload);
   const refreshToken = createRefreshToken(payload);
 
@@ -250,7 +269,7 @@ const refreshTokens = async (presentedToken) => {
     sub: user._id.toString(),
     role: user.role,
     email: user.email,
-    clinic_id: clinicData?._id || ""
+    clinic_id: clinicData?._id || "",
   });
   user.refresh_tokens.push({ token_hash: hashToken(newRefresh) });
   await user.save();
@@ -259,7 +278,7 @@ const refreshTokens = async (presentedToken) => {
     sub: user._id.toString(),
     role: user.role,
     email: user.email,
-    clinic_id: clinicData?._id || ""
+    clinic_id: clinicData?._id || "",
   });
   return { accessToken: newAccess, refreshToken: newRefresh, user };
 };
@@ -285,8 +304,17 @@ const requestPasswordReset = async (email) => {
   const token = crypto.randomBytes(32).toString("hex");
   user.password_reset_token = hashToken(token);
   user.password_reset_expires = new Date(Date.now() + 60 * 60 * 1000);
+
+  const url = `${process.env.CLIENT_APP_BASE_URL}/reset-password?token=${token}`;
+
+  sendEmail({
+    to: email,
+    subject: "Verify your email",
+    text: `Verify here: ${url}`,
+    html: `<p>Verify your email <a href="${url}">click here</a></p>`,
+  }).catch((err) => logger.error(err));
+
   await user.save();
-  return token;
 };
 
 const resetPassword = async (token, newPassword) => {

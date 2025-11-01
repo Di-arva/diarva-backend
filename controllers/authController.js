@@ -1,6 +1,5 @@
 const authService = require("../services/authService");
 const logger = require("../config/logger");
-const { sendPasswordResetEmail } = require("../utils/email");
 const { uploadCertificateToS3 } = require("../services/commService");
 
 const register = async (req, res, next) => {
@@ -112,8 +111,8 @@ const logout = async (req, res, next) => {
 const requestPasswordReset = async (req, res, next) => {
   try {
     const { email } = req.body;
-    const token = await authService.requestPasswordReset(email);
-    sendPasswordResetEmail(email, token).catch((err) => logger.error(err));
+    await authService.requestPasswordReset(email);
+
     res.json({ success: true, message: "Password reset email sent" });
   } catch (err) {
     next(err);
